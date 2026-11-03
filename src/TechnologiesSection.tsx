@@ -1,38 +1,38 @@
-import { MaskedLine, Rule, delayStyle } from "./motion";
+import FilmScene from "./film/FilmScene";
+import { chapterTiming } from "./film/scenes";
 import { technologies, technologyRoute } from "./technologies";
 
 export default function TechnologiesSection() {
   return (
-    <section id="technologies" className="bg-ivory py-24 text-navy md:py-36">
-      <div className="site-container">
-        <Rule trigger="scroll" className="text-brass" />
-        <p data-reveal="fade" style={delayStyle(100)} className="eyebrow mt-8 text-brass-dark">CATS Technologies</p>
-        <h2 className="mt-5 font-serif text-[clamp(2.25rem,5vw,4rem)] font-normal leading-[1.08] tracking-[-0.015em]">
-          <MaskedLine trigger="scroll" delay={150}>Our Technologies</MaskedLine>
-        </h2>
-        <ol className="mt-14 md:mt-20">
-          {technologies.map((technology, index) => (
-            <li key={technology.id} data-reveal="rise" data-stagger="" className="group relative grid gap-5 border-t border-line-ivory py-10 last:border-b md:grid-cols-12 md:gap-x-8 md:py-14">
-              <span aria-hidden="true" className="text-xs font-medium tabular-nums tracking-[0.14em] text-brass-dark md:col-span-1 md:pt-2.5">{String(index + 1).padStart(2, "0")}</span>
-              <div className="md:col-span-5">
-                <h3 className="motion-hover font-serif text-[1.75rem] font-normal leading-[1.15] tracking-[-0.01em] group-hover:text-brass-dark md:text-4xl">{technology.heading}</h3>
-                <p className="mt-4 max-w-md text-base leading-7 text-on-ivory">{technology.supportingText}</p>
+    <>
+      {technologies.map((technology, index) => (
+        <FilmScene key={technology.id} chapter={`technology-${index}`} group="technologies" anchorId={index === 0 ? "technologies" : undefined} poster={technology.id} timing={chapterTiming.technology(index)}>
+          <div data-film-text data-in={index === 0 ? "0.02" : "0.1"} data-out="0.86" className="film-copy justify-end">
+            <div className="film-container w-full pb-10 md:pb-14">
+              {index === 0 ? <h2 className="eyebrow text-brass">Our Technologies</h2> : <p aria-hidden="true" className="eyebrow text-brass">Our Technologies</p>}
+              <div className="mt-2 flex items-baseline gap-3 text-xs font-medium tabular-nums tracking-[0.14em] text-ivory/70">
+                <span>{String(index + 1).padStart(2, "0")}</span><span aria-hidden="true">/</span><span>{String(technologies.length).padStart(2, "0")}</span>
               </div>
-              <div className="md:col-span-6">
-                <p className="text-[0.9375rem] leading-7 text-on-ivory">{technology.introduction}</p>
-                <ul className="mt-4 grid list-disc gap-1.5 pl-5 text-[0.9375rem] leading-7 text-on-ivory marker:text-brass-dark">
-                  {technology.capabilities.map((capability) => <li key={capability}>{capability}</li>)}
-                </ul>
-                {/* The link's overlay makes the whole row clickable. */}
-                <a href={technologyRoute(technology.id)} className="mt-6 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-navy after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:outline focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-brass-dark">
-                  <span className="link-draw">Learn More<span className="sr-only"> about {technology.heading}</span></span>
-                  <span aria-hidden="true" className="motion-hover group-hover:translate-x-1">→</span>
-                </a>
+              <h3 className="film-display mt-4">{technology.heading}</h3>
+              <div className="mt-5 grid gap-5 md:mt-8 md:grid-cols-12 md:gap-x-8">
+                <div className="md:col-span-5">
+                  <p className="text-lg leading-7 text-ivory md:text-xl md:leading-8">{technology.supportingText}</p>
+                  <a href={technologyRoute(technology.id)} className="group mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-ivory focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass md:mt-5">
+                    <span className="link-draw">Learn More<span className="sr-only"> about {technology.heading}</span></span>
+                    <span aria-hidden="true" className="motion-hover group-hover:translate-x-1">→</span>
+                  </a>
+                </div>
+                <div className="film-extra md:col-span-6 md:col-start-7">
+                  <p className="text-[0.9375rem] leading-7 text-ivory/85">{technology.introduction}</p>
+                  <ul className="mt-3 grid list-disc gap-x-8 gap-y-1 pl-5 text-[0.875rem] leading-6 text-ivory/85 marker:text-brass lg:grid-cols-2">
+                    {technology.capabilities.map((capability) => <li key={capability}>{capability}</li>)}
+                  </ul>
+                </div>
               </div>
-            </li>
-          ))}
-        </ol>
-      </div>
-    </section>
+            </div>
+          </div>
+        </FilmScene>
+      ))}
+    </>
   );
 }

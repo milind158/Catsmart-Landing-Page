@@ -3,16 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#101B2B" />
+    <meta name="theme-color" content="#060606" />
     <meta name="description" content="Explore the software ecosystem from Castle Advanced Technologies & Systems." />
     <script>
       // Scroll reveals hide content only when JavaScript runs. If the app never starts, show everything.
-      document.documentElement.classList.add("js");
-      addEventListener("load", function () {
-        setTimeout(function () {
-          if (!window.__revealsStarted) document.documentElement.classList.remove("js");
-        }, 2000);
-      });
+      // The film runs only where it will be welcome and smooth; everywhere else gets posters and fades.
+      (function () {
+        var root = document.documentElement;
+        var connection = navigator.connection;
+        var filmOff =
+          matchMedia("(prefers-reduced-motion: reduce)").matches ||
+          (connection && connection.saveData) ||
+          (navigator.deviceMemory && navigator.deviceMemory < 4);
+        root.classList.add("js");
+        if (!filmOff) root.classList.add("film-on");
+        addEventListener("load", function () {
+          setTimeout(function () {
+            if (!window.__revealsStarted) root.classList.remove("js", "film-on");
+          }, 2000);
+        });
+      })();
     </script>
     <title>CATS Software | Beyond Sensing. Into Intelligence.</title>
   </head>

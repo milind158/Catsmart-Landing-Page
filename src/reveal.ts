@@ -26,6 +26,8 @@ export function startReveals() {
     }
   }, { rootMargin: "0px 0px -8% 0px" });
 
-  document.querySelectorAll("[data-reveal]:not([data-revealed])").forEach((element) => observer.observe(element));
+  // In the film, scroll itself moves the chapter text. Without it, chapters fade in like everything else.
+  const filmOn = document.documentElement.classList.contains("film-on");
+  document.querySelectorAll(`[data-reveal]:not([data-revealed])${filmOn ? "" : ", [data-film-text]:not([data-revealed])"}`).forEach((element) => observer.observe(element));
   return () => observer.disconnect();
 }

@@ -20,11 +20,11 @@ const links = [
 
 const linkClass = "motion-hover link-draw whitespace-nowrap text-ivory/80 hover:text-ivory focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brass";
 
-export default function SiteNavigation({ showBack = false }: { showBack?: boolean }) {
+export default function SiteNavigation({ showBack = false, overlay = false }: { showBack?: boolean; overlay?: boolean }) {
   return (
     <>
-      <MobileNavigation links={links} onLogoClick={showBack ? handleBack : undefined} />
-      <nav aria-label="Quick links" className="fixed inset-x-0 top-0 z-[60] hidden h-16 border-b border-line-navy bg-navy md:block">
+      <MobileNavigation links={links} overlay={overlay} onLogoClick={showBack ? handleBack : undefined} />
+      <nav aria-label="Quick links" className={`${overlay ? "nav-overlay " : ""}fixed inset-x-0 top-0 z-[60] hidden h-16 border-b border-line-navy bg-navy md:block`}>
         <div className="site-container flex h-full items-center justify-between text-[0.6875rem] font-medium uppercase tracking-[0.18em]">
           <div className="flex items-center gap-8">
             {/* PLACEHOLDER: text wordmark until a logo is supplied. */}

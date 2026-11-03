@@ -8,10 +8,11 @@ type NavigationLink = {
 
 type MobileNavigationProps = {
   links: NavigationLink[];
+  overlay?: boolean;
   onLogoClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
 };
 
-export default function MobileNavigation({ links, onLogoClick }: MobileNavigationProps) {
+export default function MobileNavigation({ links, overlay = false, onLogoClick }: MobileNavigationProps) {
   const [isOpen, setIsOpen] = useState(false);
   const navigationRef = useRef<HTMLElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -43,7 +44,7 @@ export default function MobileNavigation({ links, onLogoClick }: MobileNavigatio
     <nav
       ref={navigationRef}
       aria-label="Mobile navigation"
-      className="mobile-navigation fixed inset-x-0 top-0 z-[70] flex h-16 items-center justify-between border-b border-line-navy bg-navy px-4 md:hidden"
+      className={`${overlay ? "nav-overlay " : ""}mobile-navigation fixed inset-x-0 top-0 z-[70] flex h-16 items-center justify-between border-b border-line-navy bg-navy px-4 md:hidden`}
     >
       {/* PLACEHOLDER: text wordmark until a logo is supplied. */}
       <a

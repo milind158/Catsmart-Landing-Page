@@ -10,10 +10,13 @@ import { pageRoutes } from "./routes";
 export default function App({ page }: { page: string }) {
   useEffect(() => startReveals(), [page]);
 
-  if (page === "/") return <HomePage />;
-
   const route = pageRoutes.find((item) => item.path === page);
-  if (!route) return <NotFoundPage />;
+  const content = page === "/" ? <HomePage /> : !route ? <NotFoundPage /> : route.kind === "software" ? <SoftwarePage product={route.product} /> : <TechnologyPage technology={route.technology} />;
 
-  return route.kind === "software" ? <SoftwarePage product={route.product} /> : <TechnologyPage technology={route.technology} />;
+  return (
+    <>
+      {content}
+      <div aria-hidden="true" className="page-beam" />
+    </>
+  );
 }
