@@ -534,21 +534,6 @@ html:not(.js) .mobile-menu a {
   opacity: 0;
 }
 
-.film-stand-in {
-  padding: 0.5rem clamp(1rem, 4vw, 4rem);
-  color: rgb(var(--color-ivory-rgb) / 0.8);
-  font-size: 0.6875rem;
-}
-
-.film-on .film-stand-in {
-  position: absolute;
-  z-index: 2;
-  right: clamp(1rem, 4vw, 4rem);
-  bottom: 0.25rem;
-  padding: 0.125rem 0.5rem;
-  background: var(--color-studio);
-}
-
 .film-on .film-chapters {
   position: relative;
   z-index: 1;
@@ -716,12 +701,6 @@ html:not(.js) .mobile-menu a {
 
   .film-on .film-extra {
     display: none;
-  }
-
-  .film-on .film-stand-in {
-    right: auto;
-    left: 1rem;
-    bottom: 0.125rem;
   }
 }
 

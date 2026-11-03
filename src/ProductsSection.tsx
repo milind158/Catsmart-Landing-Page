@@ -52,7 +52,7 @@ export default function ProductsSection() {
         <span aria-hidden="true" />
       </FilmScene>
 
-      <FilmScene chapter="close" poster="close" timing={chapterTiming.close} showsDevice>
+      <FilmScene chapter="close" poster="close" timing={chapterTiming.close}>
         <div data-film-text data-in="0.18" data-out="0.72" data-scrim="top" className="film-copy justify-start">
           <div className="film-container w-full pt-32 md:pt-36">
             <p className="film-heading max-w-[20ch]">From data to decisions. From insights to action.</p>

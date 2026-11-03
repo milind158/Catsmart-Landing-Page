@@ -10,7 +10,7 @@ const [boardIntro, signalSequence] = boardOverview.split(/(?<=signals\.) /);
 export default function HeroSection() {
   return (
     <>
-      <FilmScene chapter="reveal" poster="reveal" timing={chapterTiming.reveal} showsDevice>
+      <FilmScene chapter="reveal" poster="reveal" timing={chapterTiming.reveal}>
         <div data-film-text data-in="none" data-out="0.62" data-scrim="short" className="film-copy justify-end">
           <div className="film-container w-full pb-12 md:pb-16">
             <p data-enter="fade" className="eyebrow text-brass">Castle Advanced Technologies &amp; Systems</p>
@@ -29,7 +29,7 @@ export default function HeroSection() {
         </div>
       </FilmScene>
 
-      <FilmScene chapter="teardown" poster="teardown" timing={chapterTiming.teardown} showsDevice>
+      <FilmScene chapter="teardown" poster="teardown" timing={chapterTiming.teardown}>
         <div data-film-text data-in="0.2" data-out="0.95" data-scrim="side" className="film-copy justify-end md:justify-center">
           <div className="film-container w-full pb-28 md:pb-0">
             <div className="max-w-[17rem] lg:max-w-sm">
@@ -50,7 +50,7 @@ export default function HeroSection() {
         </ol>
       </FilmScene>
 
-      <FilmScene chapter="light" poster="light" timing={chapterTiming.light} showsDevice>
+      <FilmScene chapter="light" poster="light" timing={chapterTiming.light}>
         <div data-film-text data-in="0.3" data-out="0.9" className="film-copy justify-end">
           <div className="film-container w-full pb-16 md:pb-20">
             <h2 className="film-display max-w-[20ch]">{signalPath.heading}</h2>
