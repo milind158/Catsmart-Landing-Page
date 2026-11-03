@@ -1,38 +1,29 @@
-import { lazy, StrictMode, Suspense } from "react";
-import { createRoot } from "react-dom/client";
-import { notFoundDescription, notFoundTitle, pageRoutes } from "./routes";
+import { StrictMode } from "react";
+import { createRoot, hydrateRoot } from "react-dom/client";
 import "@fontsource-variable/inter/wght.css";
 import "@fontsource-variable/source-serif-4/opsz.css";
+import App from "./App";
+import { notFoundDescription, notFoundPage, notFoundTitle, pageForPath, pageRoutes } from "./routes";
 import "./index.css";
-
-const HomePage = lazy(() => import("./HomePage"));
-const NotFoundPage = lazy(() => import("./NotFoundPage"));
-const SoftwarePage = lazy(() => import("./SoftwarePage"));
-const TechnologyPage = lazy(() => import("./TechnologyPage"));
 
 function setPageMeta(title: string, description: string) {
   document.title = title;
   document.querySelector('meta[name="description"]')?.setAttribute("content", description);
 }
 
-function renderPage(path: string) {
-  if (path === "/") return <HomePage />;
+const page = pageForPath(window.location.pathname);
+const route = pageRoutes.find((item) => item.path === page);
+if (route) setPageMeta(route.title, route.description);
+if (page === notFoundPage) setPageMeta(notFoundTitle, notFoundDescription);
 
-  const route = pageRoutes.find((item) => item.path === path);
-  if (!route) {
-    setPageMeta(notFoundTitle, notFoundDescription);
-    return <NotFoundPage />;
-  }
+const root = document.getElementById("root")!;
+const app = <StrictMode><App page={page} /></StrictMode>;
 
-  setPageMeta(route.title, route.description);
-  return route.kind === "software" ? <SoftwarePage product={route.product} /> : <TechnologyPage technology={route.technology} />;
+// A host can answer with another page's file, for example index.html for every URL.
+// Hydrate only HTML that was built for this page; otherwise render it from scratch.
+if (root.dataset.page === page) {
+  hydrateRoot(root, app);
+} else {
+  root.replaceChildren();
+  createRoot(root).render(app);
 }
-
-// Static hosts commonly redirect /software/sangrah to /software/sangrah/.
-const currentPath = window.location.pathname.replace(/\/+$/, "") || "/";
-
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <Suspense fallback={null}>{renderPage(currentPath)}</Suspense>
-  </StrictMode>,
-);

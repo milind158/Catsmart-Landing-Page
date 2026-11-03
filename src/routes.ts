@@ -8,7 +8,7 @@ export type PageRoute =
   | (PageMeta & { kind: "software"; product: SoftwareProduct })
   | (PageMeta & { kind: "technology"; technology: Technology });
 
-// Used by the app at runtime and by vite.config.ts to write one HTML file per page.
+// Used by the app at runtime and by vite.config.ts to pre-render one HTML file per page.
 export const pageRoutes: PageRoute[] = [
   ...softwareProducts
     .filter((product) => product.enabled)
@@ -27,6 +27,14 @@ export const pageRoutes: PageRoute[] = [
     technology,
   })),
 ];
+
+export const notFoundPage = "/404";
+
+// Static hosts commonly redirect /software/sangrah to /software/sangrah/ or serve it as .../index.html.
+export function pageForPath(pathname: string) {
+  const path = pathname.replace(/\/index\.html$/, "").replace(/\/+$/, "") || "/";
+  return path === "/" || pageRoutes.some((route) => route.path === path) ? path : notFoundPage;
+}
 
 export const notFoundTitle = "Page not found | CATS";
 export const notFoundDescription = "The page you were looking for could not be found.";

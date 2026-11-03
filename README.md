@@ -22,7 +22,7 @@ npm run dev
 
 ## Deploy
 
-Upload `dist/` to any static host. The build writes a real HTML file for every page, each with its own title and description, so deep links need no rewrite rules. Point the host's "not found" page at `404.html`.
+Upload `dist/` to any static host. The build pre-renders a real HTML file for every page, each with its own title and description, so content is visible without JavaScript and deep links need no rewrite rules. Point the host's "not found" page at `404.html`.
 
 ## Edit content
 
