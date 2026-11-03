@@ -547,7 +547,7 @@ html:not(.js) .mobile-menu a {
   right: clamp(1rem, 4vw, 4rem);
   bottom: 0.25rem;
   padding: 0.125rem 0.5rem;
-  background: rgb(6 6 6 / 0.8);
+  background: var(--color-studio);
 }
 
 .film-on .film-chapters {
