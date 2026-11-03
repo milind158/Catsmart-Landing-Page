@@ -3,7 +3,6 @@ import ContactSection from "./ContactSection";
 import Film from "./film/Film";
 import HeroSection from "./HeroSection";
 import ProductsSection from "./ProductsSection";
-import SiteFooter from "./SiteFooter";
 import SiteNavigation from "./SiteNavigation";
 import TechnologiesSection from "./TechnologiesSection";
 
@@ -29,7 +28,6 @@ export default function HomePage() {
         <ProductsSection />
       </Film>
       <ContactSection />
-      <SiteFooter />
     </main>
   );
 }

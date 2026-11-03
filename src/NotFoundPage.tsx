@@ -1,4 +1,3 @@
-import SiteFooter from "./SiteFooter";
 import SiteNavigation from "./SiteNavigation";
 
 export default function NotFoundPage() {
@@ -11,7 +10,6 @@ export default function NotFoundPage() {
         <p className="mt-6 max-w-2xl text-base leading-7 text-[var(--body-copy)]">The page you were looking for could not be found.</p>
         <a href="/" className="mt-8 text-sm font-semibold text-[#d8d8d8] underline underline-offset-4 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#d8d8d8]">CATS homepage <span aria-hidden="true">→</span></a>
       </section>
-      <SiteFooter />
     </main>
   );
 }

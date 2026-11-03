@@ -1,5 +1,4 @@
 import ContactSection from "./ContactSection";
-import SiteFooter from "./SiteFooter";
 import SiteNavigation from "./SiteNavigation";
 import { MaskedLine, delayStyle } from "./motion";
 import { type Technology, technologies, technologyRoute } from "./technologies";
@@ -57,7 +56,6 @@ export default function TechnologyPage({ technology }: { technology: Technology 
         </nav>
       </section>
       <ContactSection />
-      <SiteFooter />
     </main>
   );
 }

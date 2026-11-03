@@ -461,18 +461,6 @@ html:not(.js) .mobile-menu a {
   display: block;
 }
 
-.film-wordmark {
-  margin: 0;
-  padding-inline: 1rem;
-  color: var(--color-navy);
-  font-family: "Source Serif 4 Variable", Georgia, serif;
-  font-size: 27vw;
-  letter-spacing: 0.01em;
-  line-height: 0.82;
-  text-align: center;
-  white-space: nowrap;
-}
-
 .js:not(.film-on) [data-film-text]:not([data-in="none"]) {
   opacity: 0;
   transition: opacity var(--dur-reveal) var(--ease-out);

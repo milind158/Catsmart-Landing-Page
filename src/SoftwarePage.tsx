@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { type SoftwareProduct, softwareDetails, softwareProducts } from "./softwareProducts";
 import ContactSection from "./ContactSection";
-import SiteFooter from "./SiteFooter";
 import SiteNavigation from "./SiteNavigation";
 import { MaskedLine, delayStyle } from "./motion";
 
@@ -145,7 +144,6 @@ export default function SoftwarePage({ product }: { product: SoftwareProduct }) 
         </nav>
       </section>
       <ContactSection />
-      <SiteFooter />
     </main>
   );
 }
