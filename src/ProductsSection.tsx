@@ -15,7 +15,6 @@ export default function ProductsSection() {
             <a
               key={product.id}
               href={product.route}
-              aria-label={`View ${product.name} details`}
               className="group grid cursor-pointer gap-5 border-t border-white/10 py-8 transition-colors hover:border-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent-red)] md:grid-cols-[0.9fr_1.1fr] md:items-center md:gap-12 md:py-10"
             >
               <div>

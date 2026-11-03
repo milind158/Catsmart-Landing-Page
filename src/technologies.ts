@@ -6,6 +6,8 @@ export type Technology = {
   capabilities: string[];
 };
 
+export const technologyRoute = (id: string) => `/technologies/${id}`;
+
 export const technologies: Technology[] = [
   {
     id: "big-data-analytics",

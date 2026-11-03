@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
-import { softwareDetails, softwareProducts } from "./softwareProducts";
+import { useState } from "react";
+import { type SoftwareProduct, softwareDetails, softwareProducts } from "./softwareProducts";
 import ContactSection from "./ContactSection";
-import ProductPageNavigation from "./ProductPageNavigation";
+import SiteFooter from "./SiteFooter";
+import SiteNavigation from "./SiteNavigation";
 
 const sectionClass = "mx-auto max-w-6xl px-6 py-20 md:px-10 md:py-28";
 const workflowSectionClass = "mx-auto max-w-6xl px-6 py-16 md:px-10 md:py-20";
@@ -11,7 +12,7 @@ function isDescribedItem(item: string | { title: string; description: string }):
   return typeof item !== "string";
 }
 
-export default function SoftwarePage({ product }: { product: typeof softwareProducts[number] }) {
+export default function SoftwarePage({ product }: { product: SoftwareProduct }) {
   const detail = softwareDetails[product.id];
   const [imageFailed, setImageFailed] = useState(false);
   const overviewParagraphs = typeof detail.overview === "string" ? [detail.overview] : detail.overview;
@@ -20,22 +21,10 @@ export default function SoftwarePage({ product }: { product: typeof softwareProd
     : [];
   const hasDetailedApplications = detail.applications?.some(isDescribedItem) ?? false;
 
-  useEffect(() => setImageFailed(false), [product.image.src]);
-
-  useEffect(() => {
-    document.title = `${product.name} | CATS Software`;
-    let description = document.querySelector<HTMLMetaElement>('meta[name="description"]');
-    if (!description) {
-      description = document.createElement("meta");
-      description.name = "description";
-      document.head.appendChild(description);
-    }
-    description.content = detail.introduction;
-  }, [detail.introduction, product.name]);
 
   return (
     <main className="product-page min-h-screen bg-[var(--site-background)] text-white">
-      <ProductPageNavigation />
+      <SiteNavigation showBack />
 
       <section className="relative border-y border-white/10">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_78%_48%,rgba(226,58,50,0.10),transparent_36%)]" />
@@ -45,13 +34,15 @@ export default function SoftwarePage({ product }: { product: typeof softwareProd
             <p className="mt-6 max-w-2xl break-words text-xl font-semibold leading-snug text-[var(--subheading)] md:text-2xl">{detail.heroTagline ?? product.tagline}</p>
             <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--body-copy)]">{detail.introduction}</p>
           </div>
-          <div aria-label={`${product.name} product image`} className="w-full min-w-0">
+          <div className="w-full min-w-0">
             {!imageFailed && <img
               src={product.image.src}
-              alt=""
+              alt={`${product.name} product image`}
+              width={product.image.width}
+              height={product.image.height}
+              decoding="async"
               onError={() => setImageFailed(true)}
               className="block h-auto w-full"
-              style={{ objectFit: "contain", objectPosition: product.image.position ?? "center" }}
             />}
           </div>
         </div>
@@ -148,12 +139,12 @@ export default function SoftwarePage({ product }: { product: typeof softwareProd
         <p className={eyebrowClass}>Continue exploring</p>
         <h2 className="mt-5 text-3xl font-bold tracking-tight md:text-4xl">Software for a more intelligent world.</h2>
         <nav aria-label="Other software products" className="mt-8 flex flex-wrap gap-x-7 gap-y-4">
-          {softwareProducts.filter((item) => item.enabled && item.id !== product.id).sort((a, b) => a.displayOrder - b.displayOrder).map((item) => <a key={item.id} href={item.route} className="text-sm font-semibold text-white/70 transition-colors hover:text-[var(--accent-red)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-red)]">{item.name} <span aria-hidden="true">→</span></a>)}
-          <a href="/" className="text-sm font-semibold text-white/70 transition-colors hover:text-[var(--accent-red)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-red)]">CATS homepage <span aria-hidden="true">→</span></a>
+          {softwareProducts.filter((item) => item.enabled && item.id !== product.id).sort((a, b) => a.displayOrder - b.displayOrder).map((item) => <a key={item.id} href={item.route} className="text-sm font-semibold text-[#d8d8d8] underline underline-offset-4 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#d8d8d8]">{item.name} <span aria-hidden="true">→</span></a>)}
+          <a href="/" className="text-sm font-semibold text-[#d8d8d8] underline underline-offset-4 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#d8d8d8]">CATS homepage <span aria-hidden="true">→</span></a>
         </nav>
       </section>
       <ContactSection />
-      <footer className="border-t border-white/10 px-6 py-7 text-center text-[9px] uppercase tracking-[0.3em] text-white/35">Castle Advanced Technologies &amp; Systems</footer>
+      <SiteFooter />
     </main>
   );
 }

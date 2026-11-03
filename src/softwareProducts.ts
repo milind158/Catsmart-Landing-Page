@@ -5,10 +5,9 @@ export type SoftwareProduct = {
   description: string;
   image: {
     src: string;
-    fit?: "cover" | "contain";
-    position?: string;
+    width: number;
+    height: number;
   };
-  slug: string;
   route: string;
   displayOrder: number;
   enabled: boolean;
@@ -35,7 +34,6 @@ export type SoftwareDetail = {
   introduction: string;
 };
 
-export const softwareContactRoute: string | null = null;
 export const softwareLoginRoute: string | null = null;
 
 export const softwareProducts: SoftwareProduct[] = [
@@ -44,8 +42,7 @@ export const softwareProducts: SoftwareProduct[] = [
     name: "Sangrah",
     tagline: "Every signal has a story. Sangrah makes it measurable.",
     description: "A centralized platform for sensor management, calibration, trials, signal analysis, and reporting.",
-    image: { src: "/images/software/sangrah.png", fit: "contain", position: "center" },
-    slug: "sangrah",
+    image: { src: "/images/software/sangrah.webp", width: 1400, height: 934 },
     route: "/software/sangrah",
     displayOrder: 6,
     enabled: true,
@@ -55,8 +52,7 @@ export const softwareProducts: SoftwareProduct[] = [
     name: "VIDUR Raksha",
     tagline: "Know your assets before they tell you something's wrong.",
     description: "An enterprise asset health intelligence platform for structural monitoring, condition assessment, risk analysis, and predictive maintenance.",
-    image: { src: "/images/software/vidur-raksha.png", fit: "contain", position: "center" },
-    slug: "vidur-raksha",
+    image: { src: "/images/software/vidur-raksha.webp", width: 1400, height: 934 },
     route: "/software/vidur-raksha",
     displayOrder: 3,
     enabled: true,
@@ -66,8 +62,7 @@ export const softwareProducts: SoftwareProduct[] = [
     name: "Sarathi",
     tagline: "Complex operations. One clearer picture.",
     description: "A platform for operational monitoring, visibility, and coordinated management.",
-    image: { src: "/images/software/sarathi.png", fit: "contain", position: "center" },
-    slug: "sarathi",
+    image: { src: "/images/software/sarathi.webp", width: 1400, height: 788 },
     route: "/software/sarathi",
     displayOrder: 1,
     enabled: true,
@@ -77,8 +72,7 @@ export const softwareProducts: SoftwareProduct[] = [
     name: "Samveda",
     tagline: "Intelligence begins where the data is born.",
     description: "Edge-based monitoring and connected intelligence for industrial applications.",
-    image: { src: "/images/software/samveda.png", fit: "contain", position: "center" },
-    slug: "samveda",
+    image: { src: "/images/software/samveda.webp", width: 1400, height: 788 },
     route: "/software/samveda",
     displayOrder: 5,
     enabled: true,
@@ -88,8 +82,7 @@ export const softwareProducts: SoftwareProduct[] = [
     name: "Bodhi.ai",
     tagline: "Less searching. Less switching. Just ask.",
     description: "An AI-powered workplace operating system that connects tools, automates workflows, and provides information through natural-language conversations.",
-    image: { src: "/images/software/bodhi-ai.png", fit: "contain", position: "center" },
-    slug: "bodhi-ai",
+    image: { src: "/images/software/bodhi-ai.webp", width: 1400, height: 788 },
     route: "/software/bodhi-ai",
     displayOrder: 2,
     enabled: true,
@@ -99,8 +92,7 @@ export const softwareProducts: SoftwareProduct[] = [
     name: "Trinetra",
     tagline: "The AI that never blinks.",
     description: "Trinetra transforms existing CCTV cameras into intelligent industrial safety monitoring systems. With on-site edge AI, it detects safety violations, monitors restricted zones, and delivers real-time alerts without depending on continuous internet connectivity.",
-    image: { src: "/images/software/Trinetra.png", fit: "contain", position: "center" },
-    slug: "trinetra",
+    image: { src: "/images/software/trinetra.webp", width: 1400, height: 934 },
     route: "/software/trinetra",
     displayOrder: 4,
     enabled: true,

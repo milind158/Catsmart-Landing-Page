@@ -1,5 +1,6 @@
-import { useRef, useMemo } from "react";
+import { type FocusEvent, type RefObject, useRef } from "react";
 import {
+  type MotionValue,
   motion,
   useScroll,
   useTransform,
@@ -7,7 +8,7 @@ import {
   useReducedMotion,
 } from "framer-motion";
 import { useIsMobile } from "./use-mobile";
-import { technologies } from "./technologies";
+import { type Technology, technologies, technologyRoute } from "./technologies";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -36,13 +37,10 @@ const renderTechnologyHeading = (heading: string) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-
-
-// ─────────────────────────────────────────────────────────────────────────────
 // SHATTER LETTER — DOM span, active AFTER engraving, handles scroll V-explosion
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ShatterLetter = ({ char, progress, index, totalLength, isMobile, reduceMotion }: { char: string, progress: any, index: number, totalLength: number, isMobile?: boolean, reduceMotion: boolean | null }) => {
+const ShatterLetter = ({ char, progress, index, totalLength, isMobile, reduceMotion }: { char: string, progress: MotionValue<number>, index: number, totalLength: number, isMobile?: boolean, reduceMotion: boolean | null }) => {
   const isLeft = isMobile ? true : index < totalLength / 2;
   const middle = Math.floor(totalLength / 2);
   const distFromCenter = Math.abs(isLeft ? middle - 1 - index : index - middle);
@@ -51,19 +49,12 @@ const ShatterLetter = ({ char, progress, index, totalLength, isMobile, reduceMot
   const templateIndex = Math.max(0, Math.min(distFromCenter, shatterTemplates.length - 1));
   const template = shatterTemplates[templateIndex] || shatterTemplates[0];
 
-  const randomX = useMemo(() => {
-    const d = template.x * 90;
-    return isLeft ? `-${d}vw` : `${d}vw`;
-  }, [isLeft, template]);
-
-  const randomY = useMemo(() => `-${template.y * 100 + 20}vh`, [template]);
-
-  const randomRotate = useMemo(() => {
-    const angle = (template.r - 0.5) * 720;
-    return isLeft ? `${angle}deg` : `${-angle}deg`;
-  }, [isLeft, template]);
-
-  const randomScale = useMemo(() => template.s * 2 + 0.5, [template]);
+  const distance = template.x * 90;
+  const randomX = isLeft ? `-${distance}vw` : `${distance}vw`;
+  const randomY = `-${template.y * 100 + 20}vh`;
+  const angle = (template.r - 0.5) * 720;
+  const randomRotate = isLeft ? `${angle}deg` : `${-angle}deg`;
+  const randomScale = template.s * 2 + 0.5;
 
   const x = useTransform(progress, [0, 0.1], ["0vw", randomX]);
   const y = useTransform(progress, [0, 0.1], ["0vh", randomY]);
@@ -85,7 +76,6 @@ const ShatterLetter = ({ char, progress, index, totalLength, isMobile, reduceMot
         position: "relative",
         willChange: "transform, opacity"
       }}
-      className=""
     >
       <span
         className="absolute left-0 top-0 -z-10 select-none"
@@ -139,7 +129,7 @@ const HeroSection = () => {
 
   return (
     <section ref={containerRef} className="homepage-hero-background relative h-[250vh] z-0">
-      <div className="relative sticky top-0 h-screen w-full flex flex-col items-center justify-center overflow-hidden font-outfit z-10">
+      <div className="sticky top-0 h-screen w-full flex flex-col items-center justify-center overflow-clip z-10">
 
 
         <motion.div
@@ -157,46 +147,48 @@ const HeroSection = () => {
             </p>
           </motion.div>
 
-        <motion.h1
+          <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
             className="text-3xl sm:text-4xl md:text-7xl lg:text-[7.5rem] font-black tracking-tighter mb-10 flex flex-col items-center text-center leading-[1] md:leading-[0.85] w-full px-4"
           >
-            <div className="flex w-full justify-center flex-wrap gap-x-[0.3em]">
+            <span className="sr-only">Beyond Sensing, Into Intelligence. From data to decisions. From insights to action.</span>
+            <span aria-hidden="true" className="flex w-full justify-center flex-wrap gap-x-[0.3em]">
               {(() => {
                 const text = "Beyond Sensing,";
                 const words = text.split(" ");
                 let charCount = 0;
                 return words.map((word, wIdx) => {
                   const result = (
-                    <div key={wIdx} className="flex flex-nowrap">
+                    <span key={wIdx} className="flex flex-nowrap">
                       {word.split("").map((c, i) => (
                         <ShatterLetter key={charCount + i} char={c} progress={scrollProgress} index={charCount + i} totalLength={text.length} isMobile={isMobile} reduceMotion={reduceMotion} />
                       ))}
-                    </div>
+                    </span>
                   );
                   charCount += word.length + 1;
                   return result;
                 });
               })()}
-            </div>
+            </span>
 
-            <div className="flex w-full justify-center mt-2 md:mt-4 flex-wrap gap-x-[0.3em]">
+            <span aria-hidden="true" className="flex w-full justify-center mt-2 md:mt-4 flex-wrap gap-x-[0.3em]">
               {(() => {
                 const text = "Into Intelligence.";
                 const chars = text.split("");
                 return (
-                  <div className="flex flex-nowrap">
+                  <span className="flex flex-nowrap">
                     {chars.map((c, i) => (
                       <ShatterLetter key={i} char={c} progress={scrollProgress} index={i} totalLength={text.length} isMobile={isMobile} reduceMotion={reduceMotion} />
                     ))}
-                  </div>
+                  </span>
                 );
               })()}
-            </div>
+            </span>
 
             <motion.span
+              aria-hidden="true"
               style={{ opacity: headerOpacity }}
               className="text-[10px] sm:text-xs md:text-3xl lg:text-4xl font-bold text-white mt-4 md:mt-10 tracking-[0.08em] md:tracking-tight leading-normal"
             >
@@ -233,7 +225,7 @@ const HeroSection = () => {
 
         <div className="absolute inset-0 z-30 pointer-events-none">
           {technologies.map((technology, index) => (
-            <ContentSegment key={technology.id} technology={technology} index={index} total={technologies.length} progress={scrollProgress} reduceMotion={reduceMotion} />
+            <ContentSegment key={technology.id} technology={technology} index={index} total={technologies.length} progress={scrollProgress} reduceMotion={reduceMotion} heroRef={containerRef} />
           ))}
         </div>
 
@@ -249,20 +241,20 @@ const HeroSection = () => {
   );
 };
 
-function TechnologyDescription({ technology, compact = false }: { technology: typeof technologies[number]; compact?: boolean }) {
+function TechnologyDescription({ technology, compact = false }: { technology: Technology; compact?: boolean }) {
   return (
     <>
       <p className={compact ? "text-[13px] leading-5 text-[var(--body-copy)]" : "text-sm leading-6 text-[var(--body-copy)] lg:text-base lg:leading-7"}>
         {technology.introduction}
       </p>
-      <ul className={compact ? "mt-3 grid gap-1.5 pl-4 text-[13px] leading-5 text-[var(--body-copy)] marker:text-[var(--accent-red)]" : "mt-5 grid gap-2 pl-5 text-sm leading-6 text-[var(--body-copy)] marker:text-[var(--accent-red)] lg:text-base lg:leading-7"}>
+      <ul className={compact ? "mt-3 grid list-disc gap-1.5 pl-4 text-[13px] leading-5 text-[var(--body-copy)] marker:text-[var(--accent-red)]" : "mt-5 grid list-disc gap-2 pl-5 text-sm leading-6 text-[var(--body-copy)] marker:text-[var(--accent-red)] lg:text-base lg:leading-7"}>
         {technology.capabilities.map((capability) => <li key={capability}>{capability}</li>)}
       </ul>
     </>
   );
 }
 
-const ContentSegment = ({ technology, index, total, progress, reduceMotion }: { technology: typeof technologies[number]; index: number; total: number; progress: any; reduceMotion: boolean | null }) => {
+const ContentSegment = ({ technology, index, total, progress, reduceMotion, heroRef }: { technology: Technology; index: number; total: number; progress: MotionValue<number>; reduceMotion: boolean | null; heroRef: RefObject<HTMLDivElement> }) => {
   const sectionStart = 0.04;
   const start = sectionStart + (index * (1 - sectionStart)) / total;
   const end = sectionStart + ((index + 1) * (1 - sectionStart)) / total;
@@ -274,13 +266,24 @@ const ContentSegment = ({ technology, index, total, progress, reduceMotion }: { 
   const leftX = useTransform(progress, [start, mid - plateau, mid + plateau, end], reduceMotion ? [0, 0, 0, 0] : [-100, 0, 0, -100]);
   const rightX = useTransform(progress, [start, mid - plateau, mid + plateau, end], reduceMotion ? [0, 0, 0, 0] : [100, 0, 0, 100]);
   const y = useTransform(progress, [start, mid - plateau, mid + plateau, end], reduceMotion ? [0, 0, 0, 0] : [50, 0, 0, -50]);
+  // Every segment stays mounted, so only the one on screen may receive clicks.
+  const linkPointerEvents = useTransform(opacity, (value) => (value > 0.5 ? "auto" : "none"));
+
+  // Keyboard users can tab to a segment that is not on screen yet: bring it into view.
+  const scrollToSegment = (event: FocusEvent<HTMLAnchorElement>) => {
+    const hero = heroRef.current;
+    if (!hero || !event.target.matches(":focus-visible")) return;
+    window.scrollTo({ top: hero.offsetTop + mid * (hero.offsetHeight - window.innerHeight) });
+  };
+
+  const learnMoreClass = "relative z-50 inline-flex min-h-10 items-center py-2 font-semibold text-[#d8d8d8] underline underline-offset-4 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#d8d8d8]";
+  const learnMoreLabel = <>Learn More <span className="sr-only">about {technology.heading}</span><span className="ml-1" aria-hidden="true">→</span></>;
+
   return (
     <div className="pointer-events-none absolute inset-0 z-40">
       <motion.div
         style={{ opacity, x: leftX, y }}
-        className={cn(
-          "absolute inset-y-0 left-4 right-16 flex flex-col items-start justify-start pt-16 text-left md:left-[12vw] md:right-auto md:max-w-[35vw] md:justify-center md:pt-0"
-        )}
+        className="absolute inset-y-0 left-4 right-16 flex flex-col items-start justify-start pt-16 text-left md:left-[12vw] md:right-auto md:max-w-[35vw] md:justify-center md:pt-0"
       >
         <h2 className="text-gradient-primary overflow-visible pb-1 text-3xl sm:text-4xl md:text-5xl font-black tracking-[-0.01em] leading-[1.1] break-words mb-3">
           {renderTechnologyHeading(technology.heading)}
@@ -292,21 +295,20 @@ const ContentSegment = ({ technology, index, total, progress, reduceMotion }: { 
           <div className="[@media(max-height:640px)]:hidden">
             <TechnologyDescription technology={technology} compact />
           </div>
-          <a href={`/technologies/${technology.id}`} className="pointer-events-auto relative z-50 mt-3 inline-flex min-h-10 items-center py-2 text-xs font-semibold text-[#d8d8d8] underline underline-offset-4 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#d8d8d8]">Learn More <span className="ml-1" aria-hidden="true">→</span></a>
+          <motion.a href={technologyRoute(technology.id)} onFocus={scrollToSegment} style={{ pointerEvents: linkPointerEvents }} className={`${learnMoreClass} mt-3 text-xs`}>{learnMoreLabel}</motion.a>
         </div>
       </motion.div>
 
       <motion.div
         style={{ opacity, x: rightX, y }}
-        className="absolute inset-y-0 right-[12vw] hidden flex-col justify-center md:flex md:max-w-[35vw]"
+        className="absolute inset-y-0 right-[12vw] hidden flex-col items-start justify-center md:flex md:max-w-[35vw]"
       >
-        <TechnologyDescription technology={technology} />
-        <a href={`/technologies/${technology.id}`} className="pointer-events-auto relative z-50 mt-4 inline-flex min-h-10 items-center py-2 text-sm font-semibold text-[#d8d8d8] underline underline-offset-4 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#d8d8d8]">Learn More <span className="ml-1" aria-hidden="true">→</span></a>
+        <div><TechnologyDescription technology={technology} /></div>
+        <motion.a href={technologyRoute(technology.id)} onFocus={scrollToSegment} style={{ pointerEvents: linkPointerEvents }} className={`${learnMoreClass} mt-4 text-sm`}>{learnMoreLabel}</motion.a>
       </motion.div>
 
     </div>
   );
 };
 
-const cn = (...classes: any[]) => classes.filter(Boolean).join(" ");
 export default HeroSection;

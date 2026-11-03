@@ -1,5 +1,4 @@
 import { ChangeEvent, FormEvent, useState } from "react";
-import { primaryActionClass } from "./actionStyles";
 
 type ContactField = "name" | "email" | "reason" | "message";
 type ContactErrors = Partial<Record<ContactField, string>>;
@@ -91,7 +90,7 @@ export default function ContactSection() {
             {errorMessage("message")}
           </div>
           <div className="flex flex-wrap items-center gap-5">
-            <button type="submit" className={`${primaryActionClass} px-6`}>
+            <button type="submit" className="inline-flex min-h-12 items-center gap-3 rounded-[7px] border border-white/70 bg-white px-6 text-[10px] font-bold uppercase tracking-[0.22em] text-black transition-colors hover:border-white hover:bg-white/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
               Send Message <span aria-hidden="true">→</span>
             </button>
             {submissionAttempted && <p role="status" className="max-w-md text-xs leading-5 text-white/55">Your message has not been sent because form submission is not configured yet. Your entries remain in the form.</p>}

@@ -1,2 +1,0 @@
-export const primaryActionClass =
-  "inline-flex min-h-12 items-center gap-3 rounded-[7px] border border-white/70 bg-white text-[10px] font-bold uppercase tracking-[0.22em] text-black transition-colors hover:border-white hover:bg-white/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white";

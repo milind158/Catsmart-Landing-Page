@@ -1,5 +1,3 @@
-import { technologies } from "./technologies";
-
 export type TechnologyFeature = { title: string; description: string };
 export type TechnologySection = {
   label: string;
@@ -120,19 +118,11 @@ export const technologyDetails: Record<string, { introduction: string; sections:
   },
 };
 
-export const technologyRoute = (id: string) => `/technologies/${id}`;
-
 export const technologyHeroImages: Record<string, { src: string; position: string }> = {
-  "big-data-analytics": { src: "/images/technology-heroes/big-data-analytics.jpg", position: "center" },
-  optoelectronics: { src: "/images/technology-heroes/optoelectronics.jpg", position: "center" },
-  "image-processing": { src: "/images/technology-heroes/image-processing.jpg", position: "center" },
-  "sound-processing": { src: "/images/technology-heroes/sound-processing.jpg", position: "center" },
-  "command-control": { src: "/images/technology-heroes/command-control.jpg", position: "center" },
-  "research-customisation": { src: "/images/technology-heroes/research-customisation.jpg", position: "center" },
-};
-
-export const technologyByPath = (path: string) => {
-  const id = path.replace(/^\/technologies\//, "").replace(/\/$/, "");
-  const technology = technologies.find((item) => item.id === id);
-  return technology && technologyDetails[id] ? technology : undefined;
+  "big-data-analytics": { src: "/images/technology-heroes/big-data-analytics.webp", position: "center" },
+  optoelectronics: { src: "/images/technology-heroes/optoelectronics.webp", position: "center" },
+  "image-processing": { src: "/images/technology-heroes/image-processing.webp", position: "center" },
+  "sound-processing": { src: "/images/technology-heroes/sound-processing.webp", position: "center" },
+  "command-control": { src: "/images/technology-heroes/command-control.webp", position: "center" },
+  "research-customisation": { src: "/images/technology-heroes/research-customisation.webp", position: "center" },
 };
