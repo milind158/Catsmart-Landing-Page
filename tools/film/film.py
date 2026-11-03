@@ -3,12 +3,13 @@
 STAND-IN: the device here is a generic model, not CATS hardware. Replace build_device()
 with imported CAD and keep the same layer names and the rest of the film still works.
 
-Render from the repo root:
-  blender -b --factory-startup -P tools/film/film.py -- render --variant desktop --out <dir>
+Render from the repo root. --sink runs tools/film/encode.sh on each finished frame and removes its PNG,
+because a 4K run does not fit on disk as PNGs:
+  blender -b --factory-startup -P tools/film/film.py -- render --variant desktop --out <dir> --sink tools/film/encode.sh
   blender -b --factory-startup -P tools/film/film.py -- render --variant mobile --frames 1,60,100 --out <dir>
 
 Every frame is a pure function of its time (apply_frame), so any frame can be re-rendered alone.
-Times below are in beats. A file's number is two per beat (see beat_of), which is what keeps scrolling
+Times below are in beats. A file's number is four per beat (see beat_of), which is what keeps scrolling
 smooth, and those numbers are shared with src/film/scenes.ts: change them in both places.
 """
 import bmesh
@@ -16,11 +17,13 @@ import json
 import math
 import os
 import random
+import subprocess
 import sys
 
 import bpy
 from bpy_extras.object_utils import world_to_camera_view
 from mathutils import Vector
+import numpy as np
 
 SCENE_NAME = "CATS Film"
 
@@ -37,7 +40,7 @@ TURN_DEGREES = 9
 SECTIONS = {"reveal": REVEAL, "teardown": TEARDOWN, "light": LIGHT, "technologies": TECH, "screen": SCREEN, "close": CLOSE, "turn": TURN}
 
 VARIANTS = {
-    "desktop": {"width": 1920, "height": 1080, "step": 1},
+    "desktop": {"width": 3840, "height": 2160, "step": 1},
     "mobile": {"width": 720, "height": 1280, "step": 2},
 }
 
@@ -49,7 +52,15 @@ STAGES = ["detection", "conditioning", "processing", "digitisation", "transmissi
 STAGE_BEATS_START = 85
 STAGE_BEATS_STEP = 6
 
+# The lens the camera dives into, on the top board, relative to that board.
+LENS_XY = (-0.24, -0.42)
+LENS_TOP = 0.122 + 0.002 + 0.016
+LENS_RADIUS = 0.05
+LENS_LIGHT = (0.74, 0.5, 0.26)
+
 MACRO_X = 100.0
+MACRO_END_X = 190.0
+MACRO_KEY_ENERGY = 2200
 STATION_X0 = 205.0
 STATION_STEP = 40.0
 SCREEN_X = 500.0
@@ -62,12 +73,12 @@ SCREEN_DISTANCE = {"desktop": 31.5, "mobile": 20.0}
 # ---- Maths
 
 def beat_of(number):
-    """File 1 is beat 1, file 3 is beat 2, file 2 falls halfway between them."""
-    return (number + 1) / 2
+    """File 1 is beat 1, file 5 is beat 2, and files 2 to 4 fall evenly between them."""
+    return (number + 3) / 4
 
 
 def number_of(beat):
-    return beat * 2 - 1
+    return beat * 4 - 3
 
 
 def clamp01(x):
@@ -86,6 +97,27 @@ def lerp(a, b, t):
 def catmull(p0, p1, p2, p3, t):
     t2, t3 = t * t, t * t * t
     return 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3)
+
+
+def spline(keys, t):
+    """Smooth through (t, value, value, ...) keys spaced unevenly, with no change of speed at a key."""
+    if t <= keys[0][0]:
+        return keys[0][1:]
+    if t >= keys[-1][0]:
+        return keys[-1][1:]
+    i = next(n for n in range(len(keys) - 1) if keys[n][0] <= t <= keys[n + 1][0])
+    a, b = keys[i], keys[i + 1]
+    before, after = keys[max(i - 1, 0)], keys[min(i + 2, len(keys) - 1)]
+    span = b[0] - a[0]
+    u = (t - a[0]) / span
+    h00, h10 = 2 * u ** 3 - 3 * u ** 2 + 1, u ** 3 - 2 * u ** 2 + u
+    h01, h11 = -2 * u ** 3 + 3 * u ** 2, u ** 3 - u ** 2
+    out = []
+    for n in range(1, len(a)):
+        slope_a = (b[n] - before[n]) / (b[0] - before[0])
+        slope_b = (after[n] - a[n]) / (after[0] - a[0])
+        out.append(h00 * a[n] + h10 * span * slope_a + h01 * b[n] + h11 * span * slope_b)
+    return out
 
 
 def sample_keys(keys, frame):
@@ -138,6 +170,51 @@ def set_glow(mat, strength, color=None):
     emit.inputs["Strength"].default_value = strength
     if color:
         emit.inputs["Color"].default_value = (*color, 1)
+
+
+def signal_material(name, strength):
+    """Amber light before the converters, ivory data after them, changing along the line itself."""
+    mat = emissive(name, AMBER, strength)
+    tree = mat.node_tree
+    emit = next(n for n in tree.nodes if n.type == "EMISSION")
+    geometry = tree.nodes.new("ShaderNodeNewGeometry")
+    split = tree.nodes.new("ShaderNodeSeparateXYZ")
+    span = tree.nodes.new("ShaderNodeMapRange")
+    span.interpolation_type = "SMOOTHSTEP"
+    span.inputs["From Min"].default_value = MACRO_X + 37
+    span.inputs["From Max"].default_value = MACRO_X + 47
+    mix = tree.nodes.new("ShaderNodeMix")
+    mix.data_type = "RGBA"
+    mix.inputs["A"].default_value = (*AMBER, 1)
+    mix.inputs["B"].default_value = (*IVORY, 1)
+    tree.links.new(geometry.outputs["Position"], split.inputs[0])
+    tree.links.new(split.outputs["X"], span.inputs["Value"])
+    tree.links.new(span.outputs["Result"], mix.inputs["Factor"])
+    tree.links.new(mix.outputs["Result"], emit.inputs["Color"])
+    return mat
+
+
+def fade_along_x(mat, start, end):
+    """Fades a surface out along the flight path, so a set ends in darkness rather than at an edge."""
+    tree = mat.node_tree
+    out = next(n for n in tree.nodes if n.type == "OUTPUT_MATERIAL")
+    surface = out.inputs["Surface"].links[0].from_socket
+    geometry = tree.nodes.new("ShaderNodeNewGeometry")
+    split = tree.nodes.new("ShaderNodeSeparateXYZ")
+    span = tree.nodes.new("ShaderNodeMapRange")
+    span.interpolation_type = "SMOOTHSTEP"
+    span.inputs["From Min"].default_value = start
+    span.inputs["From Max"].default_value = end
+    clear = tree.nodes.new("ShaderNodeBsdfTransparent")
+    mix = tree.nodes.new("ShaderNodeMixShader")
+    tree.links.new(geometry.outputs["Position"], split.inputs[0])
+    tree.links.new(split.outputs["X"], span.inputs["Value"])
+    tree.links.new(span.outputs["Result"], mix.inputs[0])
+    tree.links.new(surface, mix.inputs[1])
+    tree.links.new(clear.outputs[0], mix.inputs[2])
+    tree.links.new(mix.outputs[0], out.inputs["Surface"])
+    mat.surface_render_method = "BLENDED"
+    return mat
 
 
 def veil_material():
@@ -300,10 +377,10 @@ def build_board(index, stage, collection, parent, mats):
     if stage == "detection":
         for n in range(4):
             x = -0.72 + n * 0.48
-            add_cylinder(metal, (x, -0.42, top + 0.05), 0.095, 0.1, 28)
-            add_cylinder(metal, (x, -0.42, top + 0.11), 0.07, 0.02, 28)
+            add_cylinder(metal, (x, -0.42, top + 0.05), 0.095, 0.1, 96)
+            add_cylinder(metal, (x, -0.42, top + 0.11), 0.07, 0.02, 96)
             lens = bmesh.new()
-            add_cylinder(lens, (x, -0.42, top + 0.122), 0.05, 0.004, 24)
+            add_cylinder(lens, (x, -0.42, top + 0.122), LENS_RADIUS, 0.004, 96)
             finish_mesh(lens, f"lens_{n}", glow, collection, root)
             add_box(package, (x, 0.1, top + 0.016), (0.2, 0.2, 0.03))
     elif stage == "conditioning":
@@ -432,7 +509,7 @@ def build_macro(collection, mats):
 
     bm = bmesh.new()
     add_box(bm, (MACRO_X + 40, 0, -0.5), (120, 40, 1.0))
-    finish_mesh(bm, "macro_ground", mats["solder_gloss"], collection, root)
+    finish_mesh(bm, "macro_ground", fade_along_x(mats["solder_gloss"], MACRO_END_X - 22, MACRO_END_X - 4), collection, root)
 
     bm = bmesh.new()
     for lane in range(70):
@@ -447,35 +524,41 @@ def build_macro(collection, mats):
             points.append((x - 0.26, points[-1][1]))
             points.append((x, y))
         add_trace(bm, points, 0.05, 0.002)
-    finish_mesh(bm, "macro_copper", mats["copper"], collection, root)
+    finish_mesh(bm, "macro_copper", fade_along_x(mats["copper_macro"], MACRO_END_X - 22, MACRO_END_X - 4), collection, root)
 
-    F.channel_glow = emissive("channel", AMBER, 9.0)
-    F.data_glow = emissive("data", IVORY, 10.0)
+    F.signal_glow = signal_material("signal", 9.0)
     channels = (-1.5, -0.5, 0.5, 1.5)
-    F.beam_in = make_curve("beam_in", [(MACRO_X - 8, 0, 0.3), (MACRO_X + 8, 0, 0.3)], 0.05, F.channel_glow, collection, root)
+    F.beam_in = make_curve("beam_in", [(MACRO_X - 8, 0, 0.3), (MACRO_X + 8, 0, 0.3)], 0.05, F.signal_glow, collection, root)
 
     F.analog = []
     F.digital = []
     for n, y in enumerate(channels):
+        phase = n * 1.3
+        wave = lambda at: 0.2 * math.sin(at * (2.2 + n * 0.35) + phase) * math.sin(at * 0.45 + phase)
         points = [(MACRO_X + 8, 0, 0.3), (MACRO_X + 10, y * 0.4, 0.3), (MACRO_X + 13, y, 0.3)]
         x = MACRO_X + 13
         while x < MACRO_X + 41:
-            x += 0.12
-            phase = n * 1.3
-            points.append((x, y, 0.3 + 0.2 * math.sin(x * (2.2 + n * 0.35) + phase) * math.sin(x * 0.45 + phase)))
-        F.analog.append(make_curve(f"analog_{n}", points, 0.018, F.channel_glow, collection, root))
+            x += 0.05
+            # Nearing the converter the smooth wave is sampled into steps, so light visibly becomes data.
+            held = round(wave(math.floor(x / 0.55) * 0.55) / 0.07) * 0.07
+            points.append((x, y, 0.3 + lerp(wave(x), held, smooth(MACRO_X + 27, MACRO_X + 38, x))))
+        F.analog.append(make_curve(f"analog_{n}", points, 0.018, F.signal_glow, collection, root))
 
         bits = random.Random(n + 3)
         x = MACRO_X + 44
         level = 0
-        points = [(x, y, 0.16)]
+        points = [(x, y, 0.3 - 0.13)]
+        # The four channels run together into the single data line that carries on to the stations.
         while x < MACRO_X + 79:
-            x += bits.choice([0.3, 0.3, 0.6])
-            points.append((x, y, 0.16 + level * 0.26))
+            x = min(x + bits.choice([0.3, 0.3, 0.6]), MACRO_X + 79)
+            merged = smooth(MACRO_X + 60, MACRO_X + 79, x)
+            lane = lerp(y, 0, merged)
+            points.append((x, lane, 0.3 + (level - 0.5) * 0.26 * (1 - merged)))
             level = 1 - level
-            points.append((x, y, 0.16 + level * 0.26))
-        F.digital.append(make_curve(f"digital_{n}", points, 0.016, F.data_glow, collection, root))
+            points.append((x, lane, 0.3 + (level - 0.5) * 0.26 * (1 - merged)))
+        F.digital.append(make_curve(f"digital_{n}", points, 0.016, F.signal_glow, collection, root))
 
+    F.data_glow = emissive("data", IVORY, 10.0)
     # The converters: where the analogue channels end and the data starts.
     bm = bmesh.new()
     slit = bmesh.new()
@@ -483,16 +566,16 @@ def build_macro(collection, mats):
         add_box(bm, (MACRO_X + 42.5, y, 0.28), (2.6, 0.72, 0.56))
         add_box(slit, (MACRO_X + 41.18, y, 0.3), (0.02, 0.5, 0.05))
         add_box(slit, (MACRO_X + 43.82, y, 0.3), (0.02, 0.5, 0.05))
-    finish_mesh(bm, "macro_adc", mats["package"], collection, root, bevel=0.03)
+    finish_mesh(bm, "macro_adc", mats["converter"], collection, root, bevel=0.03)
     finish_mesh(slit, "macro_adc_slit", F.data_glow, collection, root)
 
     light = bpy.data.lights.new("macro_key", "AREA")
     light.size = 40
     light.color = (0.75, 0.82, 1.0)
-    light.energy = 700
-    obj = bpy.data.objects.new("macro_key", light)
-    obj.location = (MACRO_X + 40, 0, 14)
-    collection.objects.link(obj)
+    light.energy = MACRO_KEY_ENERGY
+    F.macro_key = bpy.data.objects.new("macro_key", light)
+    F.macro_key.location = (MACRO_X + 40, 0, 14)
+    collection.objects.link(F.macro_key)
 
 
 # ---- Six stations on one continuous data line
@@ -508,8 +591,9 @@ def build_stations(collection, mats):
     F.station_soft = [emissive(f"station_{i}_soft", IVORY, 1.0) for i in range(6)]
     F.station_reveal = [[] for _ in range(6)]
 
-    # Big Data & Analytics: a surface of points, moving like a field of readings.
+    # Big Data & Analytics: a surface of points that lifts out of the data line as the camera arrives.
     cx = station_x(0)
+    F.field = []
     for layer, (mat, spacing, offset) in enumerate(((F.station_glow[0], 0.17, -2.0), (F.station_soft[0], 0.34, -0.4))):
         verts, faces = [], []
         count = 130 if layer == 0 else 44
@@ -527,30 +611,55 @@ def build_stations(collection, mats):
         obj = bpy.data.objects.new(f"points_{layer}", mesh)
         mesh.materials.append(mat)
         collection.objects.link(obj)
+        F.field.append(obj)
 
-    # Optoelectronics: a tunnel of fibres converging ahead of the camera on one detector die.
+    # Optoelectronics: a tunnel of fibres converging on one detector. They begin where the field of
+    # points ends, and stop short of the centre so the camera's path stays clear.
     cx = station_x(1)
     rng = random.Random(21)
     die_x = cx + 11
+    F.die_x = die_x
     for n in range(40):
         angle = n / 40 * math.tau + rng.uniform(-0.05, 0.05)
         radius = rng.uniform(5.5, 10)
-        start = (cx - rng.uniform(14, 22), math.cos(angle) * radius, math.sin(angle) * radius)
-        end = (die_x, (rng.uniform(-0.7, 0.7)), rng.uniform(-0.7, 0.7))
+        start = (cx - rng.uniform(21, 33), math.cos(angle) * radius, math.sin(angle) * radius)
+        reach = rng.uniform(1.0, 1.28)
+        end = (die_x, math.cos(angle) * reach, math.sin(angle) * reach)
         points = []
         for step in range(48):
             t = step / 47
             e = t * t * (3 - 2 * t)
             points.append((lerp(start[0], end[0], t), lerp(start[1], end[1], e), lerp(start[2], end[2], e)))
         F.station_reveal[1].append(make_curve(f"opto_{n}", points, 0.012, F.station_glow[1] if n % 3 else F.station_soft[1], collection))
+    # An open frame rather than a solid block, so the flight carries on through it.
     bm = bmesh.new()
-    add_box(bm, (die_x + 0.3, 0, 0), (0.3, 2.6, 2.6))
-    finish_mesh(bm, "opto_die", mats["metal"], collection, bevel=0.02)
+    add_box(bm, (die_x, 0, 1.3), (0.1, 2.6, 0.08))
+    add_box(bm, (die_x, 0, -1.3), (0.1, 2.6, 0.08))
+    add_box(bm, (die_x, 1.3, 0), (0.1, 0.08, 2.68))
+    add_box(bm, (die_x, -1.3, 0), (0.1, 0.08, 2.68))
+    finish_mesh(bm, "opto_frame", mats["metal"], collection, bevel=0.01)
+    # The detector's pixels leave the frame as the camera nears, streaming on towards the lenses.
+    F.die_glow = emissive("die_glow", IVORY, 1.0)
+    rng = random.Random(5)
     bm = bmesh.new()
+    targets = []
     for iy in range(8):
         for iz in range(8):
-            add_box(bm, (die_x + 0.13, (iy - 3.5) * 0.28, (iz - 3.5) * 0.28), (0.02, 0.22, 0.22))
-    finish_mesh(bm, "opto_pixels", F.station_soft[1], collection)
+            y, z = (iy - 3.5) * 0.28, (iz - 3.5) * 0.28
+            add_box(bm, (die_x, y, z), (0.02, 0.22, 0.22))
+            reach = math.hypot(y, z)
+            spread = (1.4 + reach * 1.9) / reach
+            ahead = rng.uniform(9, 24)
+            for corner in range(8):
+                targets.append((ahead, y * spread - y, z * spread - z))
+    bm.verts.ensure_lookup_table()
+    verts = [Vector(v.co) for v in bm.verts]
+    F.pixels = finish_mesh(bm, "opto_pixels", F.die_glow, collection)
+    F.pixels.shape_key_add(name="rest")
+    opened = F.pixels.shape_key_add(name="open")
+    for point, base, move in zip(opened.data, verts, targets):
+        point.co = base + Vector(move)
+    F.pixels_open = opened
 
     # Image Processing: lens rings the camera flies through, and detection frames.
     cx = station_x(2)
@@ -722,6 +831,8 @@ def build():
         "anodised": principled("anodised", (0.018, 0.019, 0.022), 1.0, 0.34),
         "metal": principled("metal", (0.34, 0.33, 0.31), 1.0, 0.32),
         "copper": principled("copper", (0.42, 0.25, 0.1), 1.0, 0.36),
+        "copper_macro": principled("copper_macro", (0.42, 0.25, 0.1), 1.0, 0.36),
+        "converter": principled("converter", (0.2, 0.2, 0.22), 0.0, 0.34),
         "solder": principled("solder", (0.005, 0.011, 0.01), 0.0, 0.5, 0.25),
         "solder_gloss": principled("solder_gloss", (0.004, 0.008, 0.008), 0.0, 0.14, 0.7),
         "package": principled("package", (0.01, 0.01, 0.012), 0.0, 0.45, 0.3),
@@ -792,8 +903,10 @@ DEVICE_KEYS = [
     (116, (-7.6, -11.6, 5.2), (0.7, 0.0, 2.05), 58, -0.14, -0.1),
 ]
 DIVE_START = 117
-DIVE_END = 148
-MACRO_START = 149
+# The dive ends inside the lens. From IRIS_START the view inside it opens up, and by DIVE_END it fills the frame.
+IRIS_START = 138
+DIVE_END = 152
+MACRO_START = IRIS_START
 
 
 def close_keys():
@@ -805,50 +918,70 @@ def close_keys():
     ]
 
 
-def dive_keys():
-    z = board_z("detection", 116)
-    can = (-0.24, -0.42, z + 0.13)
-    return [
-        (116, (-7.6, -11.6, 5.2), (0.7, 0.0, 2.05), 58, -0.14, -0.1),
-        (126, (-4.0, -6.0, z + 1.5), (0.0, -0.2, z), 50, -0.02, 0.0),
-        (140, (-0.9, -1.4, z + 0.5), (can[0], can[1], can[2]), 42, 0.0, 0.0),
-        (149, (can[0] - 0.02, can[1] - 0.02, can[2] + 0.12), can, 36, 0.0, 0.0),
-    ]
+def lens_position():
+    # The top board sits 0.4 to the side once apart: see apply_device.
+    return Vector((LENS_XY[0] + 0.4, LENS_XY[1], board_z("detection", 116) + LENS_TOP))
 
 
-def station_camera(frame, variant):
+def dive_camera(frame):
+    """Closes on the lens at a constant rate of zoom: distance falls by the same fraction every frame."""
+    t = clamp01((frame - DIVE_START) / (DIVE_END - DIVE_START))
+    # Eases in from the teardown's resting shot, then holds its rate so it never slows before the lens.
+    settle = 0.22
+    travel = t * t / (2 * settle * (1 - settle / 2)) if t < settle else (t - settle / 2) / (1 - settle / 2)
+    lens_at = lens_position()
+    start = Vector(DEVICE_KEYS[-1][1]) - lens_at
+    finish = Vector((-0.32, -0.46, 1.0)).normalized()
+    turn = smooth(0.0, 0.8, t)
+    direction = start.normalized().lerp(finish, turn).normalized()
+    distance = math.exp(lerp(math.log(start.length), math.log(0.035), travel))
+    target = Vector(DEVICE_KEYS[-1][2]).lerp(lens_at, smooth(0.0, 0.62, t))
+    keep = 1 - smooth(0.0, 0.62, t)
+    return tuple(lens_at + direction * distance), tuple(target), lerp(36, 58, keep), DEVICE_KEYS[-1][4] * keep, DEVICE_KEYS[-1][5] * keep
+
+
+# beat, camera y, camera z, target y, target z, lens, frame shift. One curve from inside the lens to the
+# last station: nothing in it is piecewise, so the camera can never change speed or direction abruptly.
+FLIGHT_KEYS = [
+    (138.0, -0.30, 0.50, 0.0, 0.30, 28, 0.0),
+    (152.0, -0.70, 0.62, 0.0, 0.28, 30, 0.0),
+    (166.0, -1.70, 1.10, 0.0, 0.25, 30, 0.0),
+    (182.0, -2.40, 1.50, 0.1, 0.15, 30, -0.02),
+    (197.0, -3.60, 1.35, 0.5, 0.00, 30, -0.08),
+    (209.5, -5.50, 1.10, 1.1, -0.15, 30, -0.14),
+    (222.0, -3.40, 0.90, 0.6, -0.10, 30, -0.14),
+    (234.5, -1.20, 0.50, 0.0, -0.05, 30, -0.14),
+    (242.8, -0.62, -0.32, 0.0, -0.05, 30, -0.14),
+    (259.5, -1.40, 0.75, 0.0, -0.15, 30, -0.14),
+    (284.5, -5.00, 0.30, 1.1, -0.15, 30, -0.14),
+    (309.5, -7.50, 5.60, 1.1, -1.30, 30, -0.14),
+    (334.5, -5.50, 5.00, 1.1, -1.30, 30, -0.14),
+    (346.0, 0.00, 0.00, 0.0, 0.00, 40, 0.0),
+]
+JOIN_X = STATION_X0 - STATION_STEP / 2
+JOIN_SPEED = 2.4
+
+
+def flight_x(frame):
+    """Distance along the data line. Slower at each station and quicker between them, joined without a jolt."""
+    if frame < TECH[0]:
+        span = TECH[0] - MACRO_START
+        u = clamp01((frame - MACRO_START) / span)
+        h00, h10 = 2 * u ** 3 - 3 * u ** 2 + 1, u ** 3 - 2 * u ** 2 + u
+        h01, h11 = -2 * u ** 3 + 3 * u ** 2, u ** 3 - u ** 2
+        return h00 * (MACRO_X - 6) + h10 * span * 1.3 + h01 * JOIN_X + h11 * span * JOIN_SPEED
     u = (frame - TECH[0]) / 25
     index = min(5, int(u))
-    local = u - index
-    centered = 2 * local - 1
-    offset = (0.5 * centered ** 3 + 0.5 * centered) * (STATION_STEP / 2)
-    x = station_x(index) + offset
-
-    # Per-station height and side offset, blended across each boundary.
-    poses = [(-5.5, 1.1), (-1.4, 0.6), (-1.0, 0.55), (-5.0, 0.3), (-7.5, 5.6), (-5.5, 5.0)]
-    a = poses[index]
-    if local < 0.25:
-        b = poses[index - 1] if index else (-1.6, 1.2)
-        t = 0.5 + 2 * local
-    elif local > 0.75:
-        b = poses[index + 1] if index < 5 else (0.0, 0.0)
-        t = 0.5 + 2 * (1 - local)
-    else:
-        b, t = a, 1.0
-    t = t * t * (3 - 2 * t)
-    y, z = lerp(b[0], a[0], t), lerp(b[1], a[1], t)
-    target = (x + 9, 1.1 if abs(y) > 1 else 0.0, -0.15 if z < 3 else -1.3)
-    sx = -0.14 if variant == "desktop" else 0.0
-    return (x, y, z), target, 30, sx, -0.08 if variant == "mobile" else 0.0
+    centered = 2 * (u - index) - 1
+    return station_x(index) + (0.25 * centered ** 3 + 0.75 * centered) * (STATION_STEP / 2)
 
 
-def macro_camera(frame):
-    t = clamp01((frame - MACRO_START) / (LIGHT[1] - MACRO_START))
-    eased = t * 0.86 + 0.14 * smooth(0, 1, t)
-    x = MACRO_X + lerp(-6, 66, eased)
-    y = lerp(-1.6, -2.3, smooth(0.3, 1, t))
-    z = lerp(0.55, 1.5, smooth(0.0, 0.5, t))
-    return (x, y, z), (x + 6, 0.0, 0.25), 30, 0.0, 0.0
+def flight_camera(frame, variant):
+    x = flight_x(frame)
+    y, z, target_y, target_z, lens, shift = spline(FLIGHT_KEYS, frame)
+    sx = shift if variant == "desktop" else 0.0
+    sy = shift * (0.08 / 0.14) if variant == "mobile" else 0.0
+    return (x, y, z), (x + 9, target_y, target_z), lens, sx, sy
 
 
 def screen_camera(frame, variant):
@@ -860,17 +993,15 @@ def screen_camera(frame, variant):
     return (x, 0.0, 0.0), (SCREEN_X, 0.0, 0.0), 40, sx * t, sy * t
 
 
-def camera_at(frame, variant):
+def camera_at(frame, variant, view=None):
     if frame >= TURN[0]:
         return sample_keys(DEVICE_KEYS, 36)
     if frame < DIVE_START:
         return sample_keys(DEVICE_KEYS, frame)
-    if frame < MACRO_START:
-        return sample_keys(dive_keys(), frame)
-    if frame <= LIGHT[1]:
-        return macro_camera(frame)
-    if frame <= TECH[1]:
-        return station_camera(frame, variant)
+    if frame <= TECH[1] and (view == "macro" or (view is None and frame >= DIVE_END)):
+        return flight_camera(frame, variant)
+    if frame < DIVE_END:
+        return dive_camera(frame)
     if frame <= SCREEN[1]:
         return screen_camera(frame, variant)
     return sample_keys(close_keys(), frame)
@@ -899,23 +1030,30 @@ def lid_state(frame):
 
 # ---- A frame
 
-def visible_set(frame):
+def visible_sets(frame, view=None):
+    if view:
+        return {view}
     if frame >= TURN[0] or frame < MACRO_START or frame >= CLOSE[0]:
-        return "device"
-    if frame <= LIGHT[1]:
-        return "macro"
+        return {"device"}
+    if frame < DIVE_END:
+        return {"device", "macro"}
+    # The macro set and the stations share one line, so across the join both are simply in shot.
+    if frame <= TECH[0] - 26:
+        return {"macro"}
+    if frame <= TECH[0] + 22:
+        return {"macro", "stations"}
     if frame <= TECH[1]:
-        return "stations"
-    return "screen"
+        return {"stations"}
+    return {"screen"}
 
 
-def apply_frame(frame, variant="desktop"):
-    active = visible_set(frame)
+def apply_frame(frame, variant="desktop", view=None):
+    active = visible_sets(frame, view)
     for name, collection in F.sets.items():
-        collection.hide_render = name != active
-        collection.hide_viewport = name != active
+        collection.hide_render = name not in active
+        collection.hide_viewport = name not in active
 
-    loc, target, lens, sx, sy = camera_at(frame, variant)
+    loc, target, lens, sx, sy = camera_at(frame, variant, view)
     F.camera.location = loc
     aim(F.camera, target)
     F.camera.data.lens = lens
@@ -924,13 +1062,13 @@ def apply_frame(frame, variant="desktop"):
     hero_lift = -0.09 * (1 - smooth(36, 62, 36 if frame >= TURN[0] else frame))
     F.camera.data.shift_y = sy if variant == "mobile" else hero_lift
 
-    if active == "device":
+    if "device" in active:
         apply_device(frame)
-    elif active == "macro":
+    if "macro" in active:
         apply_macro(frame)
-    elif active == "stations":
+    if "stations" in active:
         apply_stations(frame)
-    else:
+    if "screen" in active:
         apply_screen(frame)
     apply_veil(frame)
 
@@ -983,32 +1121,53 @@ def apply_device(frame):
 
 
 def apply_macro(frame):
-    t = clamp01((frame - MACRO_START) / (LIGHT[1] - MACRO_START))
-    front = lerp(MACRO_X - 2, MACRO_X + 84, t ** 0.9)
+    camera_x = flight_x(frame)
+    t = clamp01((frame - MACRO_START) / (TECH[0] - MACRO_START))
+    # The signal stays ahead of the camera, starting from the lens as the view opens.
+    front = camera_x + lerp(2, 38, smooth(0, 0.35, t))
     F.beam_in.data.bevel_factor_end = clamp01((front - (MACRO_X - 8)) / 16)
     for curve in F.analog:
         curve.data.bevel_factor_end = clamp01((front - (MACRO_X + 8)) / 33)
     for curve in F.digital:
         curve.data.bevel_factor_end = clamp01((front - (MACRO_X + 44)) / 35)
+    F.macro_key.data.energy = MACRO_KEY_ENERGY * (1 - smooth(TECH[0] - 12, TECH[0] + 10, frame))
 
 
-STATION_STRENGTH = (7.0, 7.0, 7.0, 3.2, 5.5, 7.0)
+STATION_STRENGTH = (7.0, 5.0, 7.0, 3.2, 5.5, 7.0)
+# How far ahead of the camera a station starts to light up, where it differs from the usual reach.
+LIGHT_AHEAD = {1: 46}
+# How far back a station's light starts to draw itself, in units along the line.
+REVEAL_FROM = {1: -42, 4: -22}
+REVEAL_TO = {1: 2, 4: 10}
 
 
 def apply_stations(frame):
-    camera_x = F.camera.location.x
+    camera_x = flight_x(frame)
     for index in range(6):
-        fade = 1 - smooth(10, 26, abs(camera_x - station_x(index)))
-        progress = smooth(-22, 10, camera_x - station_x(index))
+        # Wide enough that the next station is lit before the last has gone: the frame is never empty.
+        ahead = station_x(index) - camera_x
+        fade = 1 - smooth(14, LIGHT_AHEAD.get(index, 34) if ahead > 0 else 34, abs(ahead))
         strength = STATION_STRENGTH[index] * fade
         set_glow(F.station_glow[index], strength)
         set_glow(F.station_soft[index], strength * 0.8)
-        for curve in F.station_reveal[index]:
-            curve.data.bevel_factor_end = progress
+        if index in REVEAL_FROM:
+            progress = smooth(REVEAL_FROM[index], REVEAL_TO[index], camera_x - station_x(index))
+            for curve in F.station_reveal[index]:
+                curve.data.bevel_factor_end = progress
+
+    lift = smooth(station_x(0) - 30, station_x(0) - 8, camera_x)
+    for obj in F.field:
+        obj.scale = (1, 1, max(lift, 0.001))
+
+    opening = smooth(F.die_x - 12, F.die_x - 1.5, camera_x)
+    F.pixels_open.value = opening
+    die_fade = 1 - smooth(14, 34, abs(camera_x - station_x(1)))
+    set_glow(F.die_glow, 3.2 * die_fade * (1 - 0.35 * opening))
+
     F.sweep.rotation_euler = (0, 0, (frame - TECH[0]) * 0.11)
     F.station_key.location = (camera_x + 8, 0, 16)
     aim(F.station_key, (camera_x + 8, 0, 0))
-    F.station_key.data.energy = 1100
+    F.station_key.data.energy = 1100 * smooth(TECH[0] - 26, TECH[0] - 4, frame)
 
 
 def apply_screen(frame):
@@ -1029,13 +1188,9 @@ def apply_screen(frame):
 
 
 def apply_veil(frame):
-    """Fade-through moments between sets, then the climb into daylight at the end of the film."""
+    """The fade from the screen to the closing shot, then the climb into daylight at the end of the film."""
     amount, color, strength = 0.0, IVORY, 6.0
-    if DIVE_END - 8 <= frame <= MACRO_START + 7:
-        amount = smooth(DIVE_END - 5, DIVE_END, frame) * (1 - smooth(MACRO_START, MACRO_START + 5, frame))
-    elif TECH[0] - 4 <= frame <= TECH[0] + 3:
-        amount = 0.0
-    elif SCREEN[1] - 4 <= frame <= CLOSE[0] + 8:
+    if SCREEN[1] - 4 <= frame <= CLOSE[0] + 8:
         amount = smooth(SCREEN[1] - 4, SCREEN[1], frame) * (1 - smooth(CLOSE[0], CLOSE[0] + 6, frame))
     elif frame >= CLOSE[1] - 22 and frame <= CLOSE[1]:
         amount = smooth(CLOSE[1] - 22, CLOSE[1], frame)
@@ -1111,23 +1266,106 @@ def setup_variant(variant, scale=1.0):
 def film_frames(variant):
     # The turn follows a pointer rather than scroll, so it stays at one image per beat everywhere.
     step = VARIANTS[variant]["step"]
-    return list(range(1, number_of(CLOSE[1]) + 1, step)) + list(range(number_of(TURN[0]), number_of(TURN[1]) + 1, 2))
+    return list(range(1, number_of(CLOSE[1]) + 1, step)) + list(range(number_of(TURN[0]), number_of(TURN[1]) + 1, 4))
 
 
-def render(variant, out, frames=None, scale=1.0, samples=None):
+def render_to(path):
+    F.scene.render.filepath = path
+    bpy.ops.render.render(write_still=True, scene=F.scene.name)
+
+
+def read_png(path):
+    image = bpy.data.images.load(path)
+    image.colorspace_settings.name = "Non-Color"
+    width, height = image.size
+    pixels = np.empty(width * height * 4, np.float32)
+    image.pixels.foreach_get(pixels)
+    bpy.data.images.remove(image)
+    return pixels.reshape(height, width, 4)
+
+
+def write_png(pixels, path):
+    height, width = pixels.shape[:2]
+    image = bpy.data.images.new("iris_out", width, height, alpha=False)
+    image.colorspace_settings.name = "Non-Color"
+    image.pixels.foreach_set(pixels.astype(np.float32).ravel())
+    image.filepath_raw = path
+    image.file_format = "PNG"
+    image.save()
+    bpy.data.images.remove(image)
+
+
+def lens_mask(frame):
+    """1 where this pixel looks through the lens: a ray from the camera to the lens's own plane, so it
+    fits the real disc exactly at any angle. Its opening grows from the centre of the lens to the rim."""
+    bpy.context.view_layer.update()
+    scene = F.scene
+    width, height = scene.render.resolution_x, scene.render.resolution_y
+    corners = [F.camera.matrix_world @ c for c in F.camera.data.view_frame(scene=scene)]
+    top_right, bottom_right, bottom_left = (np.array(c) for c in corners[:3])
+    origin = np.array(F.camera.matrix_world.translation)
+    u = ((np.arange(width) + 0.5) / width)[None, :, None]
+    v = ((np.arange(height) + 0.5) / height)[:, None, None]
+    rays = bottom_left + u * (bottom_right - bottom_left) + v * (top_right - bottom_right) - origin
+    lens_at = np.array(lens_position())
+    downward = rays[..., 2] < -1e-6
+    reach = np.where(downward, (lens_at[2] - origin[2]) / np.where(downward, rays[..., 2], -1), np.inf)
+    across = np.hypot(origin[0] + reach * rays[..., 0] - lens_at[0], origin[1] + reach * rays[..., 1] - lens_at[1])
+    across = np.where(downward, across, np.inf)
+    opening = LENS_RADIUS * smooth(IRIS_START, IRIS_START + 7, frame)
+    edge = max(LENS_RADIUS * 0.28, 1e-5)
+    if opening <= 0:
+        return np.zeros((height, width))
+    amount = np.clip((opening - across) / edge, 0, 1)
+    return amount * amount * (3 - 2 * amount)
+
+
+def render_frame(number, variant, path):
+    frame = beat_of(number)
+    if not IRIS_START <= frame < DIVE_END:
+        apply_frame(frame, variant)
+        render_to(path)
+        return
+    # Inside the dive the picture is two shots: the lens from outside, and through it the view from within.
+    apply_frame(frame, variant, "device")
+    mask = lens_mask(frame)
+    if mask.max() <= 0:
+        render_to(path)
+        return
+    outside = None
+    if mask.min() < 1:
+        render_to(path)
+        outside = read_png(path)
+    apply_frame(frame, variant, "macro")
+    render_to(path)
+    inside = read_png(path)
+    # The lens's own light lingers just inside it, then dies away to the dark of the macro shot.
+    glow = np.array((*LENS_LIGHT, 0), np.float32) * (1 - smooth(IRIS_START + 3, DIVE_END, frame))
+    inside = 1 - (1 - inside) * (1 - glow)
+    write_png(inside if outside is None else outside + (inside - outside) * mask[..., None], path)
+
+
+def render(variant, out, frames=None, scale=1.0, samples=None, sink=None):
     setup_variant(variant, scale)
     if samples:
         F.scene.eevee.taa_render_samples = samples
     os.makedirs(out, exist_ok=True)
     # A full render resumes where it stopped; frames asked for by number are always redone.
+    running = []
     for number in frames or film_frames(variant):
         path = os.path.join(out, f"{number:04d}.png")
-        if not frames and os.path.exists(path):
+        done = path + ".done"
+        if not frames and os.path.exists(done):
             continue
-        apply_frame(beat_of(number), variant)
-        F.scene.render.filepath = path
-        bpy.ops.render.render(write_still=True, scene=F.scene.name)
-        print(f"FRAME {number}", flush=True)
+        if frames or not os.path.exists(path):
+            render_frame(number, variant, path)
+            print(f"FRAME {number}", flush=True)
+        if sink:
+            running.append(subprocess.Popen(["zsh", sink, path, variant, done]))
+            while len(running) >= 4:
+                running.pop(0).wait()
+    for job in running:
+        job.wait()
 
 
 def main():
@@ -1140,7 +1378,7 @@ def main():
     build()
     if command == "render":
         frames = [int(f) for f in options["frames"].split(",")] if "frames" in options else None
-        render(variant, options["out"], frames, float(options.get("scale", 1.0)), int(options["samples"]) if "samples" in options else None)
+        render(variant, options["out"], frames, float(options.get("scale", 1.0)), int(options["samples"]) if "samples" in options else None, options.get("sink"))
     elif command == "anchors":
         write_anchors(variant, options["out"])
 

@@ -1,37 +1,51 @@
 #!/bin/zsh
-# Encodes rendered PNGs into public/film/<scene>/<variant>/NNNN.webp and picks the posters.
-# usage: tools/film/encode.sh <png-root> [desktop-quality] [mobile-quality] [force]
-# Pass force after changing quality: otherwise only frames newer than their WebP are encoded.
-# <png-root> holds desktop/ and mobile/ from film.py. Frame ranges match film.py and src/film/scenes.ts.
+# Encodes one rendered PNG into public/film/<scene>/<tier>/NNNN.webp, then removes it: 4K PNGs do not fit on disk.
+# usage: tools/film/encode.sh <frame.png> <desktop|mobile> [done-marker]
+# A desktop frame is rendered at 4K and gives both desktop tiers, so they always match.
+# FILM_OUT moves the output, so a new render can finish before it replaces the old one.
+# Frame ranges and poster frames match film.py and src/film/scenes.ts.
 set -e
-root=$1; q_desktop=${2:-68}; q_mobile=${3:-68}; force=${4:-}
-out=public/film
-scene_of() {
-  local f=$1
-  if   (( f <= 71 ));  then echo reveal
-  elif (( f <= 231 )); then echo teardown
-  elif (( f <= 391 )); then echo light
-  elif (( f <= 691 )); then echo technologies
-  elif (( f <= 831 )); then echo screen
-  elif (( f <= 991 )); then echo close
-  else echo turn; fi
-}
-for variant in desktop mobile; do
-  [[ -d $root/$variant ]] || continue
-  q=$q_desktop; [[ $variant == mobile ]] && q=$q_mobile
-  list=$(mktemp)
-  for png in $root/$variant/*.png; do
-    name=${png:t:r}; f=$((10#$name)); scene=$(scene_of $f)
-    mkdir -p $out/$scene/$variant
-    print -r -- "$png $out/$scene/$variant/$name.webp" >> $list
-  done
-  # Skip frames already encoded, so re-rendering a range only re-encodes that range.
-  xargs -P 8 -L 1 zsh -c '[[ -z "'$force'" && -f $2 && $2 -nt $1 ]] || cwebp -quiet -q '$q' -m 6 -af -sharp_yuv "$1" -o "$2"' _ < $list
-  rm -f $list
-  mkdir -p $out/posters/$variant
-  for pair in reveal:71 teardown:223 light:343 big-data-analytics:417 optoelectronics:467 image-processing:515 sound-processing:565 command-control:615 research-customisation:671 screen:791 close:939; do
-    name=${pair%%:*}; f=${pair##*:}
-    cwebp -quiet -q $((q + 8)) -m 6 "$root/$variant/$(printf %04d $f).png" -o "$out/posters/$variant/$name.webp"
-  done
-  print "$variant: $(find $out -path "*/$variant/*" -name '*.webp' -not -path '*/posters/*' | wc -l | tr -d ' ') frames, $(find $out -path "*/$variant/*" -name '*.webp' -not -path '*/posters/*' -print0 | xargs -0 du -ch | tail -1 | cut -f1)"
-done
+png=$1; variant=$2; marker=${3:-}
+out=${FILM_OUT:-public/film}
+name=${png:t:r}; f=$((10#$name))
+if   (( f <= 141 ));  then scene=reveal
+elif (( f <= 461 ));  then scene=teardown
+elif (( f <= 781 ));  then scene=light
+elif (( f <= 1381 )); then scene=technologies
+elif (( f <= 1661 )); then scene=screen
+elif (( f <= 1981 )); then scene=close
+else scene=turn; fi
+
+webp() { mkdir -p ${@[-1]:h}; cwebp -quiet -mt -m 4 -af -sharp_yuv "$@"; }
+
+if [[ $variant == desktop ]]; then
+  webp -q ${FILM_Q_UHD:-58} "$png" -o $out/$scene/uhd/$name.webp
+  webp -q ${FILM_Q_DESKTOP:-60} -resize 1920 1080 "$png" -o $out/$scene/desktop/$name.webp
+else
+  webp -q ${FILM_Q_MOBILE:-66} "$png" -o $out/$scene/mobile/$name.webp
+fi
+
+case $f in
+  141)  poster=reveal ;;
+  445)  poster=teardown ;;
+  685)  poster=light ;;
+  833)  poster=big-data-analytics ;;
+  933)  poster=optoelectronics ;;
+  1029) poster=image-processing ;;
+  1129) poster=sound-processing ;;
+  1229) poster=command-control ;;
+  1341) poster=research-customisation ;;
+  1581) poster=screen ;;
+  1877) poster=close ;;
+  *)    poster= ;;
+esac
+if [[ -n $poster ]]; then
+  if [[ $variant == desktop ]]; then
+    webp -q 68 -resize 1920 1080 "$png" -o $out/posters/desktop/$poster.webp
+  else
+    webp -q 74 "$png" -o $out/posters/mobile/$poster.webp
+  fi
+fi
+
+rm -f "$png"
+[[ -z $marker ]] || : > "$marker"
