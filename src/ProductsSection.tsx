@@ -9,7 +9,7 @@ export default function ProductsSection() {
 
   return (
     <>
-      <FilmScene chapter="screen" group="software" anchorId="products" poster="screen" timing={chapterTiming.screen}>
+      <FilmScene chapter="screen" anchorId="products" poster="screen" timing={chapterTiming.screen}>
         <div data-film-text data-in="0.02" data-out="0.8" className="film-copy justify-end">
           <div className="film-container w-full pb-14">
             <p className="eyebrow text-brass">CATS Software</p>
@@ -19,7 +19,7 @@ export default function ProductsSection() {
       </FilmScene>
 
       {products.map((product, index) => (
-        <FilmScene key={product.id} chapter={`product-${index}`} group="software" timing={chapterTiming.product}>
+        <FilmScene key={product.id} chapter={`product-${index}`} timing={chapterTiming.product}>
           <img
             data-film-text
             data-in="0.02"
@@ -48,11 +48,11 @@ export default function ProductsSection() {
         </FilmScene>
       ))}
 
-      <FilmScene chapter="screen-exit" group="software" timing={chapterTiming.screenExit}>
+      <FilmScene chapter="screen-exit" timing={chapterTiming.screenExit}>
         <span aria-hidden="true" />
       </FilmScene>
 
-      <FilmScene chapter="close" group="contact" poster="close" timing={chapterTiming.close} showsDevice>
+      <FilmScene chapter="close" poster="close" timing={chapterTiming.close} showsDevice>
         <div data-film-text data-in="0.18" data-out="0.72" data-scrim="top" className="film-copy justify-start">
           <div className="film-container w-full pt-32 md:pt-36">
             <p className="film-heading max-w-[20ch]">From data to decisions. From insights to action.</p>

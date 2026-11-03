@@ -417,7 +417,6 @@ html:not(.js) .mobile-menu a {
 }
 
 .film-stage-track,
-.film-progress,
 .film-skip {
   display: none;
 }
@@ -726,7 +725,7 @@ html:not(.js) .mobile-menu a {
   }
 }
 
-/* Navigation over the film, and the chapter line beneath it. */
+/* Navigation over the film. */
 
 .nav-overlay .site-container {
   max-width: none;
@@ -741,81 +740,6 @@ html:not(.js) .mobile-menu a {
 
 html[data-nav-solid="true"] .nav-overlay {
   background: var(--color-navy);
-}
-
-.film-on .film-progress {
-  position: fixed;
-  z-index: 55;
-  top: 4rem;
-  right: 0;
-  left: 0;
-  display: block;
-  padding-inline: clamp(1rem, 4vw, 4rem);
-  transition: opacity var(--dur-state) var(--ease-state);
-}
-
-html[data-nav-solid="true"] .film-progress {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.film-progress ol {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 0.375rem;
-}
-
-.film-progress-cell {
-  --fill: 0;
-  display: block;
-  padding-block: 0.25rem 0.5rem;
-  color: rgb(var(--color-ivory-rgb) / 0.65);
-  font-size: 0.625rem;
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.film-progress-cell[data-active="true"],
-.film-progress-cell:hover {
-  color: var(--color-ivory);
-}
-
-.film-progress-cell:focus-visible {
-  outline: 2px solid var(--color-brass);
-  outline-offset: 2px;
-}
-
-.film-progress-track {
-  position: relative;
-  display: block;
-  height: 1px;
-  margin-bottom: 0.4rem;
-  background: rgb(var(--color-ivory-rgb) / 0.28);
-}
-
-.film-progress-track::after {
-  position: absolute;
-  inset: 0;
-  background: var(--color-ivory);
-  content: "";
-  transform: scaleX(var(--fill));
-  transform-origin: left;
-}
-
-@media (max-width: 767px) {
-  .film-progress-cell {
-    padding-block: 0.5rem 1rem;
-  }
-
-  .film-progress-label {
-    position: absolute;
-    overflow: hidden;
-    width: 1px;
-    height: 1px;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
 }
 
 .film-on .film-skip {
@@ -903,7 +827,6 @@ html[data-nav-solid="true"] .film-progress {
 
 @media print {
   .film-stage-track,
-  .film-progress,
   .film-skip {
     display: none !important;
   }

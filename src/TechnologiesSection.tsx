@@ -6,7 +6,7 @@ export default function TechnologiesSection() {
   return (
     <>
       {technologies.map((technology, index) => (
-        <FilmScene key={technology.id} chapter={`technology-${index}`} group="technologies" anchorId={index === 0 ? "technologies" : undefined} poster={technology.id} timing={chapterTiming.technology(index)}>
+        <FilmScene key={technology.id} chapter={`technology-${index}`} anchorId={index === 0 ? "technologies" : undefined} poster={technology.id} timing={chapterTiming.technology(index)}>
           <div data-film-text data-in={index === 0 ? "0.02" : "0.1"} data-out="0.86" className="film-copy justify-end">
             <div className="film-container w-full pb-10 md:pb-14">
               {index === 0 ? <h2 className="eyebrow text-brass">Our Technologies</h2> : <p aria-hidden="true" className="eyebrow text-brass">Our Technologies</p>}

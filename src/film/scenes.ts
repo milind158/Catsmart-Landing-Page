@@ -71,14 +71,3 @@ export const signalStages = [
   { id: "transmission", label: "Transmission" },
 ] as const;
 export const stageBeats = { first: 169, step: 12 };
-
-export const filmChapters = [
-  { id: "reveal", label: "Reveal", href: "#film-reveal" },
-  { id: "teardown", label: "Teardown", href: "#film-teardown" },
-  { id: "light", label: "Light", href: "#film-light" },
-  { id: "technologies", label: "Technologies", href: "#technologies" },
-  { id: "software", label: "Software", href: "#products" },
-  { id: "contact", label: "Contact", href: "#contact" },
-] as const;
-
-export type FilmChapterId = (typeof filmChapters)[number]["id"];

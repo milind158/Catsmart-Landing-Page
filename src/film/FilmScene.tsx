@@ -1,9 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
-import type { FilmChapterId } from "./scenes";
 
 type FilmSceneProps = {
   chapter: string;
-  group: FilmChapterId;
   anchorId?: string;
   poster?: string;
   timing: { length: number; from: number; to: number };
@@ -13,12 +11,11 @@ type FilmSceneProps = {
 
 // One chapter of the film. All of its text is real HTML rendered at build time, and the poster
 // stands in for the film when it does not run: no JavaScript, reduced motion or Save-Data.
-export default function FilmScene({ chapter, group, anchorId, poster, timing, showsDevice = false, children }: FilmSceneProps) {
+export default function FilmScene({ chapter, anchorId, poster, timing, showsDevice = false, children }: FilmSceneProps) {
   return (
     <section
       id={anchorId}
       data-chapter={chapter}
-      data-group={group}
       data-from={timing.from}
       data-to={timing.to}
       style={{ "--length": timing.length } as CSSProperties}

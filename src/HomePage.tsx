@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import ContactSection from "./ContactSection";
-import Film, { FilmProgress } from "./film/Film";
+import Film from "./film/Film";
 import HeroSection from "./HeroSection";
 import ProductsSection from "./ProductsSection";
 import SiteFooter from "./SiteFooter";
@@ -23,7 +23,6 @@ export default function HomePage() {
     <main className="bg-studio">
       <a href="#contact" className="film-skip">Skip the film</a>
       <SiteNavigation overlay />
-      <FilmProgress />
       <Film>
         <HeroSection />
         <TechnologiesSection />

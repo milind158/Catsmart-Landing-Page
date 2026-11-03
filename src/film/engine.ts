@@ -22,7 +22,6 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
   const scrim = root.querySelector<HTMLElement>(".film-scrim")!;
   const chapters = [...root.querySelectorAll<HTMLElement>("[data-chapter]")];
   const callouts = [...root.querySelectorAll<HTMLElement>("[data-stage]")];
-  const progressCells = [...document.querySelectorAll<HTMLElement>("[data-progress-cell]")];
 
   const canvas = document.createElement("canvas");
   canvas.className = "film-canvas";
@@ -157,18 +156,6 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
     }
   }
 
-  function updateProgress(scrollY: number) {
-    for (const cell of progressCells) {
-      const group = segments.filter((segment) => segment.element.dataset.group === cell.dataset.progressCell);
-      if (!group.length) continue;
-      const start = group[0].top;
-      const end = group[group.length - 1].bottom;
-      const local = clamp01((scrollY - start) / (end - start));
-      cell.style.setProperty("--fill", String(local));
-      cell.dataset.active = String(scrollY >= start && scrollY < end);
-    }
-  }
-
   let lastDrawn = -1;
   let lastDaylit = -1;
   let lastSnapped = -1;
@@ -200,7 +187,6 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
 
   function onScroll() {
     const scrollY = window.scrollY;
-    updateProgress(scrollY);
     if (!revealDone) return;
     moveTo(frameForScroll(scrollY));
 
