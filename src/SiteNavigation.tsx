@@ -18,17 +18,23 @@ const links = [
   { href: "/#contact", label: "Contact Us" },
 ];
 
-const linkClass = "whitespace-nowrap font-bold uppercase text-white/70 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent-red)]";
+const linkClass = "motion-hover link-draw whitespace-nowrap text-ivory/80 hover:text-ivory focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brass";
 
 export default function SiteNavigation({ showBack = false }: { showBack?: boolean }) {
   return (
     <>
       <MobileNavigation links={links} onLogoClick={showBack ? handleBack : undefined} />
-      <nav aria-label="Quick links" className={`fixed left-6 right-6 top-4 z-[60] hidden flex-wrap items-center gap-x-2 gap-y-2 pr-5 text-[9px] tracking-[0.1em] sm:left-1/2 sm:right-auto sm:top-7 sm:w-full sm:max-w-[1200px] sm:-translate-x-1/2 sm:px-6 sm:pr-11 sm:text-[10px] sm:tracking-[0.18em] md:flex md:px-10 md:pr-10 xl:px-6 xl:pr-6 ${showBack ? "justify-between" : "justify-end"}`}>
-        {showBack && <a href="/" onClick={handleBack} className={linkClass} aria-label="Back to the previous page or homepage">← Back</a>}
-        <div className="flex max-w-[82%] flex-wrap items-center justify-end gap-x-2 gap-y-2 sm:gap-6">
-          {links.map(({ href, label }) => <a key={label} href={href} className={linkClass}>{label}</a>)}
-          {softwareLoginRoute ? <a href={softwareLoginRoute} className="whitespace-nowrap font-bold uppercase text-white/75 underline-offset-4 transition-colors hover:text-white hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">Login</a> : <span aria-disabled="true" title="Login destination to be configured" className="whitespace-nowrap cursor-default font-bold uppercase text-white/55">Login</span>}
+      <nav aria-label="Quick links" className="fixed inset-x-0 top-0 z-[60] hidden h-16 border-b border-line-navy bg-navy md:block">
+        <div className="site-container flex h-full items-center justify-between text-[0.6875rem] font-medium uppercase tracking-[0.18em]">
+          <div className="flex items-center gap-8">
+            {/* PLACEHOLDER: text wordmark until a logo is supplied. */}
+            <a href="/" aria-label="CATS homepage" className="font-serif text-xl font-normal normal-case tracking-[0.08em] text-ivory focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brass">CATS</a>
+            {showBack && <a href="/" onClick={handleBack} className={linkClass} aria-label="Back to the previous page or homepage">← Back</a>}
+          </div>
+          <div className="flex items-center gap-8">
+            {links.map(({ href, label }) => <a key={label} href={href} className={linkClass}>{label}</a>)}
+            {softwareLoginRoute ? <a href={softwareLoginRoute} className={linkClass}>Login</a> : <span aria-disabled="true" title="Login destination to be configured" className="cursor-default whitespace-nowrap text-ivory/60">Login</span>}
+          </div>
         </div>
       </nav>
     </>

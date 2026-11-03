@@ -9,6 +9,42 @@
   --accent-red: #e5453d;
   --body-copy: #c8c8c8;
   --subheading: #e0e0e0;
+
+  /* PLACEHOLDER palette: not official brand colours. */
+  --color-navy: #101b2b;
+  --color-ivory: #f4f1ea;
+  --color-brass: #b0905a; /* On ivory, rules only: too faint for text. */
+  --color-brass-dark: #7a5f2e;
+  --color-body-on-navy: #b9bec6;
+  --color-body-on-ivory: #4a5361;
+  --color-line-on-navy: rgba(244, 241, 234, 0.22);
+  --color-line-on-ivory: rgba(16, 27, 43, 0.18);
+
+  /* Every duration and easing on the site reads from here. */
+  --dur-label: 700ms;
+  --dur-reveal: 800ms;
+  --dur-headline: 900ms;
+  --dur-rule: 1000ms;
+  --dur-image: 1400ms;
+  --dur-state: 500ms;
+  --dur-exit: 300ms;
+  --dur-hover: 240ms;
+  --dur-reduced: 300ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-state: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --stagger: 100ms;
+  --rise: 14px;
+  --rise-load: 12px;
+  --menu-rise: -8px;
+  --motion-scale: 1;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --motion-scale: 0.6;
+    --stagger: 60ms;
+  }
 }
 
 html,
@@ -21,6 +57,7 @@ body,
 
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: 4rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -66,21 +103,6 @@ body {
   }
 }
 
-.homepage-hero-background a[href^="/technologies/"] {
-  color: #fff;
-  transition: color 180ms ease;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .homepage-hero-background a[href^="/technologies/"]:hover {
-    color: #e26135;
-  }
-}
-
-.homepage-hero-background {
-  background: linear-gradient(180deg, #0b0b0b 0%, var(--site-background) 34%, var(--site-background) 100%);
-}
-
 .product-page {
   --accent-red: #e26135;
 }
@@ -101,4 +123,271 @@ select option:checked {
 
 select option:hover {
   background-color: #303030;
+}
+
+.site-container {
+  margin-inline: auto;
+  max-width: 1200px;
+  padding-inline: 1rem;
+}
+
+@media (min-width: 640px) {
+  .site-container {
+    padding-inline: 1.5rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .site-container {
+    padding-inline: 2.5rem;
+  }
+}
+
+.eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+/* Motion: hover */
+
+.motion-hover {
+  transition:
+    color var(--dur-hover) var(--ease-state),
+    background-color var(--dur-hover) var(--ease-state),
+    border-color var(--dur-hover) var(--ease-state),
+    transform var(--dur-hover) var(--ease-state);
+}
+
+.link-draw {
+  position: relative;
+}
+
+.link-draw::after {
+  position: absolute;
+  right: 0;
+  bottom: -0.25em;
+  left: 0;
+  height: 1px;
+  background: currentColor;
+  content: "";
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--dur-hover) var(--ease-state);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .link-draw:hover::after,
+  .group:hover .link-draw::after {
+    transform: scaleX(1);
+  }
+}
+
+.link-draw:focus-visible::after {
+  transform: scaleX(1);
+}
+
+/* Motion: the signature hairline and masked headline line */
+
+.rule {
+  display: block;
+  width: 100%;
+  height: 1px;
+}
+
+.rule::before {
+  display: block;
+  height: 100%;
+  background: currentColor;
+  content: "";
+  transform-origin: left;
+}
+
+.line-mask {
+  display: block;
+  overflow: hidden;
+  /* Keeps descenders inside the mask without changing the line spacing. */
+  margin-bottom: -0.16em;
+  padding-bottom: 0.16em;
+}
+
+.line-mask > span {
+  display: block;
+}
+
+/* Motion: load entrances. Keyframes hold their first frame during the delay, so nothing flashes. */
+
+@keyframes enter-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes enter-rise {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--rise-load) * var(--motion-scale)));
+  }
+}
+
+@keyframes enter-mask {
+  from {
+    transform: translateY(105%);
+  }
+}
+
+@keyframes enter-rule {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+[data-enter="fade"] {
+  animation: enter-fade var(--dur-label) var(--ease-out) var(--delay, 0ms) both;
+}
+
+[data-enter="rise"] {
+  animation: enter-rise var(--dur-label) var(--ease-out) var(--delay, 0ms) both;
+}
+
+[data-enter="mask"] > span {
+  animation: enter-mask var(--dur-headline) var(--ease-out) var(--delay, 0ms) both;
+}
+
+[data-enter="rule"]::before {
+  animation: enter-rule var(--dur-rule) var(--ease-out) var(--delay, 0ms) both;
+}
+
+/* Motion: scroll reveals. Started by reveal.ts; the .js class comes from the script in index.html. */
+
+.js [data-reveal="fade"] {
+  opacity: 0;
+  transition: opacity var(--dur-label) var(--ease-out) var(--delay, 0ms);
+}
+
+.js [data-reveal="rise"] {
+  opacity: 0;
+  transform: translateY(calc(var(--rise) * var(--motion-scale)));
+  transition:
+    opacity var(--dur-reveal) var(--ease-out) var(--delay, calc(var(--step, 0) * var(--stagger))),
+    transform var(--dur-reveal) var(--ease-out) var(--delay, calc(var(--step, 0) * var(--stagger)));
+}
+
+.js [data-reveal="mask"] > span {
+  transform: translateY(105%);
+  transition: transform var(--dur-headline) var(--ease-out) var(--delay, 0ms);
+}
+
+.js [data-reveal="rule"]::before {
+  transform: scaleX(0);
+  transition: transform var(--dur-rule) var(--ease-out) var(--delay, 0ms);
+}
+
+.js [data-reveal][data-revealed],
+.js [data-reveal="mask"][data-revealed] > span,
+.js [data-reveal="rule"][data-revealed]::before {
+  opacity: 1;
+  transform: none;
+}
+
+/* Motion: mobile menu. Enters over --dur-state, leaves faster and eases in. */
+
+.mobile-menu {
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(calc(var(--menu-rise) * var(--motion-scale)));
+  transition:
+    opacity var(--dur-exit) var(--ease-exit),
+    transform var(--dur-exit) var(--ease-exit),
+    visibility 0s linear var(--dur-exit);
+}
+
+.mobile-menu[data-open="true"] {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--dur-state) var(--ease-state),
+    transform var(--dur-state) var(--ease-state);
+}
+
+/* Without JavaScript the menu cannot open, so the links stay on show. */
+
+html:not(.js) .mobile-navigation {
+  position: absolute;
+}
+
+html:not(.js) .mobile-menu-button {
+  display: none;
+}
+
+html:not(.js) .mobile-menu {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+}
+
+html:not(.js) .mobile-menu > div {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+html:not(.js) .mobile-menu a {
+  min-height: 2.75rem;
+  padding-inline: 0.5rem;
+  font-size: 0.6875rem;
+}
+
+/* Motion: reduced motion replaces all movement with a short fade; rules appear fully drawn. */
+
+@media (prefers-reduced-motion: reduce) {
+  [data-enter="mask"] > span,
+  [data-enter="rule"]::before {
+    animation: none;
+  }
+
+  [data-enter="fade"],
+  [data-enter="rise"],
+  [data-enter="mask"] {
+    animation: enter-fade var(--dur-reduced) linear both;
+  }
+
+  .js [data-reveal="fade"],
+  .js [data-reveal="rise"],
+  .js [data-reveal="mask"] {
+    opacity: 0;
+    transform: none;
+    transition: opacity var(--dur-reduced) linear;
+  }
+
+  .js [data-reveal="mask"] > span,
+  .js [data-reveal="rule"]::before {
+    transform: none;
+    transition: none;
+  }
+
+  .mobile-menu,
+  .mobile-menu[data-open="true"] {
+    transform: none;
+  }
+
+  .motion-hover,
+  .link-draw::after {
+    transition-duration: 0.01ms;
+  }
+
+  .group:hover .motion-hover {
+    transform: none;
+  }
+}
+
+@media print {
+  .js [data-reveal],
+  .js [data-reveal="mask"] > span,
+  .js [data-reveal="rule"]::before {
+    opacity: 1;
+    transform: none;
+  }
 }
