@@ -20,7 +20,14 @@ function staticPages(): Plugin {
     generateBundle(_, bundle) {
       const entry = bundle["index.html"];
       if (entry?.type !== "asset") this.error("index.html was not found in the bundle");
-      const html = String(entry.source);
+      // The headline font is preloaded so hero text does not swap fonts mid-entrance.
+      const headlineFont = Object.keys(bundle).find((name) => /source-serif-4-latin-opsz-normal.*\.woff2$/.test(name));
+      if (!headlineFont) this.error("The headline font was not found in the bundle");
+      const html = String(entry.source).replace(
+        "</title>",
+        `</title>\n    <link rel="preload" href="/${headlineFont}" as="font" type="font/woff2" crossorigin />`,
+      );
+      entry.source = html;
 
       for (const { path, title, description } of pageRoutes) {
         this.emitFile({ type: "asset", fileName: `${path.slice(1)}/index.html`, source: withPageMeta(html, title, description) });
