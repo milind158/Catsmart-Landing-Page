@@ -1345,14 +1345,15 @@ def render_frame(number, variant, path):
     write_png(inside if outside is None else outside + (inside - outside) * mask[..., None], path)
 
 
-def render(variant, out, frames=None, scale=1.0, samples=None, sink=None):
+def render(variant, out, frames=None, scale=1.0, samples=None, sink=None, shard=(0, 1), encoders=4):
     setup_variant(variant, scale)
     if samples:
         F.scene.eevee.taa_render_samples = samples
     os.makedirs(out, exist_ok=True)
     # A full render resumes where it stopped; frames asked for by number are always redone.
     running = []
-    for number in frames or film_frames(variant):
+    # Several Blenders can share a run, each taking every nth frame, so slow scenes spread out evenly.
+    for number in (frames or film_frames(variant))[shard[0]::shard[1]]:
         path = os.path.join(out, f"{number:04d}.png")
         done = path + ".done"
         if not frames and os.path.exists(done):
@@ -1362,7 +1363,7 @@ def render(variant, out, frames=None, scale=1.0, samples=None, sink=None):
             print(f"FRAME {number}", flush=True)
         if sink:
             running.append(subprocess.Popen(["zsh", sink, path, variant, done]))
-            while len(running) >= 4:
+            while len(running) >= encoders:
                 running.pop(0).wait()
     for job in running:
         job.wait()
@@ -1378,7 +1379,7 @@ def main():
     build()
     if command == "render":
         frames = [int(f) for f in options["frames"].split(",")] if "frames" in options else None
-        render(variant, options["out"], frames, float(options.get("scale", 1.0)), int(options["samples"]) if "samples" in options else None, options.get("sink"))
+        render(variant, options["out"], frames, float(options.get("scale", 1.0)), int(options["samples"]) if "samples" in options else None, options.get("sink"), tuple(int(n) for n in options.get("shard", "0/1").split("/")), int(options.get("encoders", 4)))
     elif command == "anchors":
         write_anchors(variant, options["out"])
 
