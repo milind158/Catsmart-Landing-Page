@@ -1,23 +1,24 @@
 // Frame numbers match the files from tools/film/film.py and tools/film/encode.sh: change them together.
-export type Variant = "desktop" | "mobile";
+export type Variant = "uhd" | "desktop" | "mobile";
 
 export const variants: Record<Variant, { step: number; width: number; height: number }> = {
+  uhd: { step: 1, width: 3840, height: 2160 },
   desktop: { step: 1, width: 1920, height: 1080 },
   mobile: { step: 2, width: 720, height: 1280 },
 };
 
-export const filmLastFrame = 991;
-export const revealEndFrame = 71;
-// Only the odd numbers exist: the turn follows a pointer, not scroll, so it needs fewer images.
-export const turnFrames = { first: 1001, center: 1017, last: 1033, step: 2 };
+export const filmLastFrame = 1981;
+export const revealEndFrame = 141;
+// Only every fourth number exists: the turn follows a pointer, not scroll, so it needs fewer images.
+export const turnFrames = { first: 2001, center: 2033, last: 2065, step: 4 };
 
 const scenes = [
-  { id: "reveal", first: 1, last: 71 },
-  { id: "teardown", first: 72, last: 231 },
-  { id: "light", first: 232, last: 391 },
-  { id: "technologies", first: 392, last: 691 },
-  { id: "screen", first: 692, last: 831 },
-  { id: "close", first: 832, last: 991 },
+  { id: "reveal", first: 1, last: 141 },
+  { id: "teardown", first: 142, last: 461 },
+  { id: "light", first: 462, last: 781 },
+  { id: "technologies", first: 782, last: 1381 },
+  { id: "screen", first: 1382, last: 1661 },
+  { id: "close", first: 1662, last: 1981 },
   { id: "turn", first: turnFrames.first, last: turnFrames.last },
 ];
 
@@ -47,20 +48,20 @@ export const frameUrl = (frame: number, variant: Variant) =>
 // Each chapter of the page plays one stretch of the film. Length is in viewport heights of scroll.
 export type ChapterTiming = { length: number; from: number; to: number };
 
-const technologyFrames = 50;
+const technologyFrames = 100;
 export const chapterTiming = {
-  reveal: { length: 70, from: revealEndFrame, to: 73 },
-  teardown: { length: 210, from: 73, to: 231 },
-  light: { length: 180, from: 233, to: 391 },
-  technology: (index: number): ChapterTiming => ({ length: 75, from: 393 + index * technologyFrames, to: 393 + (index + 1) * technologyFrames }),
-  screen: { length: 80, from: 693, to: 791 },
-  product: { length: 60, from: 791, to: 791 },
-  screenExit: { length: 30, from: 791, to: 831 },
-  close: { length: 140, from: 833, to: filmLastFrame },
+  reveal: { length: 70, from: revealEndFrame, to: 145 },
+  teardown: { length: 210, from: 145, to: 461 },
+  light: { length: 180, from: 465, to: 781 },
+  technology: (index: number): ChapterTiming => ({ length: 75, from: 785 + index * technologyFrames, to: 785 + (index + 1) * technologyFrames }),
+  screen: { length: 80, from: 1385, to: 1581 },
+  product: { length: 60, from: 1581, to: 1581 },
+  screenExit: { length: 30, from: 1581, to: 1661 },
+  close: { length: 140, from: 1665, to: filmLastFrame },
 } satisfies Record<string, ChapterTiming | ((index: number) => ChapterTiming)>;
 
 // The last frames climb into daylight; the page finishes the step with its own exact ivory.
-export const daylightFrames = { first: 947, solidNav: 967, last: filmLastFrame };
+export const daylightFrames = { first: 1893, solidNav: 1933, last: filmLastFrame };
 
 // The five layers of the teardown, in signal order. Text is from the OAIC overview in technologyDetails.ts.
 export const signalStages = [
@@ -70,4 +71,4 @@ export const signalStages = [
   { id: "digitisation", label: "Digitisation" },
   { id: "transmission", label: "Transmission" },
 ] as const;
-export const stageBeats = { first: 169, step: 12 };
+export const stageBeats = { first: 337, step: 24 };

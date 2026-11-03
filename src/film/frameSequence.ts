@@ -2,17 +2,27 @@ import { framesOf, frameUrl, isFilmFrame, stepAt, variants, type Variant } from 
 
 const maxFetches = 6;
 const maxDecodes = 3;
-// Decoded 1080p frames cost about 8 MB each, so only those near the playhead stay in memory.
-const maxBitmaps: Record<Variant, number> = { desktop: 64, mobile: 40 };
-// Must fit inside half of maxBitmaps: eviction keeps the frames nearest the playhead either side,
-// so a longer reach ahead would decode frames only to throw them away again.
-const decodeBehind = 8;
-const decodeAhead = 18;
-const keyFrameEvery = 16;
+// A decoded frame costs about 33 MB at 4K and 8 MB at 1080p, so only those near the playhead stay in memory.
+// reach must fit inside half of maxBitmaps: eviction keeps the frames nearest the playhead either side,
+// so a longer reach ahead would decode frames only to throw them away again. decodesPerSecond sets how
+// many frames to skip when scrolling faster than they can be decoded.
+const limits: Record<Variant, { maxBitmaps: number; behind: number; ahead: number; decodesPerSecond: number }> = {
+  uhd: { maxBitmaps: 24, behind: 3, ahead: 10, decodesPerSecond: 36 },
+  desktop: { maxBitmaps: 64, behind: 8, ahead: 18, decodesPerSecond: 120 },
+  mobile: { maxBitmaps: 40, behind: 6, ahead: 14, decodesPerSecond: 60 },
+};
+const keyFrameEvery = 32;
+// Compressed frames are kept for going back, up to this much, and refetched from the browser's cache after.
+const maxBlobBytes = 160 * 1024 * 1024;
+// Frames further apart than this are too different to blend into each other cleanly.
+const widestBlend = 8;
 
 // Loads film frames in stages and hands back the closest one available, so scrubbing never goes blank.
 export class FrameSequence {
   private blobs = new Map<number, Blob>();
+  private blobBytes = 0;
+  private lastMove = 0;
+  private stride = 1;
   private bitmaps = new Map<number, ImageBitmap>();
   private queue: number[] = [];
   private queued = new Set<number>();
@@ -24,6 +34,7 @@ export class FrameSequence {
   private playhead = 1;
   private controller = new AbortController();
   readonly step: number;
+  private limits: (typeof limits)[Variant];
 
   constructor(
     readonly variant: Variant,
@@ -31,6 +42,7 @@ export class FrameSequence {
     private onFrameFailed: (frame: number) => void,
   ) {
     this.step = variants[variant].step;
+    this.limits = limits[variant];
   }
 
   snap(frame: number) {
@@ -38,18 +50,29 @@ export class FrameSequence {
     return Math.floor((frame - 1) / step) * step + 1;
   }
 
-  bitmapAt(frame: number) {
-    return this.bitmaps.get(frame);
-  }
-
   nearest(frame: number) {
     const exact = this.bitmaps.get(frame);
     if (exact) return exact;
-    for (let offset = 1; offset <= 96; offset += 1) {
+    for (let offset = 1; offset <= 192; offset += 1) {
       const candidate = this.bitmaps.get(frame - offset) ?? this.bitmaps.get(frame + offset);
       if (candidate) return candidate;
     }
     return this.bitmaps.values().next().value;
+  }
+
+  // The closest decoded frames either side, so the picture can blend across any that are not ready yet.
+  around(frame: number) {
+    const low = this.snap(frame);
+    for (let before = low; before > low - widestBlend; before -= this.step) {
+      if (!this.bitmaps.has(before)) continue;
+      for (let after = before + this.step; after <= before + widestBlend; after += this.step) {
+        if (after > frame && this.bitmaps.has(after)) {
+          return { before: this.bitmaps.get(before)!, after: this.bitmaps.get(after)!, mix: (frame - before) / (after - before) };
+        }
+      }
+      break;
+    }
+    return undefined;
   }
 
   // Key frames first and the rest after, so a scene is usable long before it has fully arrived.
@@ -74,11 +97,17 @@ export class FrameSequence {
   setPlayhead(frame: number) {
     const moved = frame - this.playhead;
     this.playhead = frame;
-    const ahead = moved >= 0 ? decodeAhead : decodeBehind;
-    const behind = moved >= 0 ? decodeBehind : decodeAhead;
+    const now = performance.now();
+    const speed = Math.abs(moved) / Math.max(now - this.lastMove, 8) * 1000;
+    this.lastMove = now;
+    // Faster than decoding can follow, every frame would arrive too late: take fewer, further ahead.
+    this.stride = Math.min(8, Math.max(1, Math.ceil(speed / this.step / this.limits.decodesPerSecond)));
+    const ahead = moved >= 0 ? this.limits.ahead : this.limits.behind;
+    const behind = moved >= 0 ? this.limits.behind : this.limits.ahead;
     const wanted: number[] = [];
+    const start = Math.floor((frame - 1) / (this.step * this.stride)) * this.step * this.stride + 1;
     for (let offset = -behind; offset <= ahead; offset += 1) {
-      const target = this.snap(frame + offset * this.step);
+      const target = start + offset * this.stride * this.step;
       if (isFilmFrame(target) && !wanted.includes(target)) wanted.push(target);
     }
     wanted.sort((a, b) => Math.abs(a - frame) - Math.abs(b - frame));
@@ -139,8 +168,10 @@ export class FrameSequence {
         })
         .then((blob) => {
           this.blobs.set(frame, blob);
+          this.blobBytes += blob.size;
+          this.evictBlobs();
           this.fetching.delete(frame);
-          if (this.pinned.has(frame) || Math.abs(frame - this.playhead) <= decodeAhead * this.step) this.decodeQueue.push(frame);
+          if (this.pinned.has(frame) || Math.abs(frame - this.playhead) <= this.limits.ahead * this.step * this.stride) this.decodeQueue.push(frame);
           this.pumpDecodes();
           this.pumpFetches();
         })
@@ -179,12 +210,22 @@ export class FrameSequence {
   }
 
   private evict() {
-    const limit = maxBitmaps[this.variant];
+    const limit = this.limits.maxBitmaps;
     if (this.bitmaps.size <= limit) return;
     const farthest = [...this.bitmaps.keys()].filter((frame) => !this.pinned.has(frame)).sort((a, b) => Math.abs(b - this.playhead) - Math.abs(a - this.playhead));
     for (const frame of farthest.slice(0, Math.max(0, this.bitmaps.size - limit))) {
       this.bitmaps.get(frame)?.close();
       this.bitmaps.delete(frame);
+    }
+  }
+
+  private evictBlobs() {
+    if (this.blobBytes <= maxBlobBytes) return;
+    const farthest = [...this.blobs.keys()].filter((frame) => !this.pinned.has(frame)).sort((a, b) => Math.abs(b - this.playhead) - Math.abs(a - this.playhead));
+    for (const frame of farthest) {
+      if (this.blobBytes <= maxBlobBytes * 0.85) break;
+      this.blobBytes -= this.blobs.get(frame)!.size;
+      this.blobs.delete(frame);
     }
   }
 

@@ -2,17 +2,29 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import anchors from "./anchors.json";
 import { FrameSequence } from "./frameSequence";
-import { daylightFrames, filmLastFrame, framesOf, revealEndFrame, sceneFor, sceneIds, signalStages, stageBeats, stepAt, turnFrames, variants, type Variant } from "./scenes";
+import { daylightFrames, filmLastFrame, framesOf, revealEndFrame, sceneFor, sceneIds, signalStages, stageBeats, turnFrames, variants, type Variant } from "./scenes";
 
 gsap.registerPlugin(ScrollTrigger);
 
 type Segment = { element: HTMLElement; top: number; bottom: number; from: number; to: number };
 type Anchors = { firstFrame: number; screen: number[]; stages: Record<string, number[][]> };
 
-const pickVariant = (): Variant => (window.innerWidth < 768 || window.innerWidth / window.innerHeight < 1 ? "mobile" : "desktop");
+const pickVariant = (): Variant => {
+  if (window.innerWidth < 768 || window.innerWidth / window.innerHeight < 1) return "mobile";
+  // 4K only where it shows and can be carried: a screen with the pixels for it, memory for the frames, and a quick connection.
+  const { deviceMemory, connection } = navigator as Navigator & { deviceMemory?: number; connection?: { downlink?: number } };
+  const pixels = window.innerWidth * (window.devicePixelRatio || 1);
+  return pixels > 2000 && (deviceMemory ?? 8) >= 8 && (connection?.downlink ?? 25) >= 25 ? "uhd" : "desktop";
+};
+// The 4K and 1080p frames are the same picture, so they share one set of positions.
+const anchorsFor = (variant: Variant) => (anchors as Record<"desktop" | "mobile", Anchors>)[variant === "mobile" ? "mobile" : "desktop"];
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 const revealSeconds = 1.3;
 const posterAfterMs = 2500;
+// The sharpest the canvas gets, in device pixels per CSS pixel.
+const sharpestRatio: Record<Variant, number> = { uhd: 2, desktop: 1.5, mobile: 1.5 };
+// How much of the opening stays decoded for its short run. The picture blends across the gaps.
+const openingEvery: Record<Variant, number> = { uhd: 8, desktop: 4, mobile: 4 };
 
 // Drives the film: maps scroll to a frame, draws it, and places everything attached to the picture.
 export function startFilm(root: HTMLElement, onFailure: () => void) {
@@ -61,7 +73,7 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
     // Never larger than the frames themselves: extra canvas pixels cost time and add no detail.
     const source = variants[variant];
     const sharpest = Math.min(source.width / stageWidth, source.height / stageHeight);
-    const ratio = Math.min(window.devicePixelRatio || 1, 1.5, Math.max(1, sharpest));
+    const ratio = Math.min(window.devicePixelRatio || 1, sharpestRatio[variant], Math.max(1, sharpest));
     canvas.width = Math.round(stageWidth * ratio);
     canvas.height = Math.round(stageHeight * ratio);
 
@@ -89,7 +101,7 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
   }
 
   function placeScreen() {
-    const [x, y, width, height] = (anchors as Record<Variant, Anchors>)[variant].screen;
+    const [x, y, width, height] = anchorsFor(variant).screen;
     const topLeft = toStage(x, y);
     const bottomRight = toStage(x + width, y + height);
     root.style.setProperty("--screen-x", `${topLeft.x}px`);
@@ -114,16 +126,16 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
   }
 
   function drawFrame(frame: number) {
-    const low = sequence.snap(frame);
-    const base = sequence.nearest(low);
+    // A cross-fade between neighbouring frames keeps slow scrolling from stepping visibly.
+    const pair = frame < filmLastFrame ? sequence.around(frame) : undefined;
+    if (pair) {
+      drawCover(pair.before, 1);
+      if (pair.mix > 0.02) drawCover(pair.after, pair.mix);
+      return true;
+    }
+    const base = sequence.nearest(sequence.snap(frame));
     if (!base) return false;
     drawCover(base, 1);
-    // A cross-fade to the next frame keeps slow scrolling from stepping visibly.
-    const step = stepAt(frame, variant);
-    const high = low + step;
-    const mix = (frame - low) / step;
-    const next = sequence.bitmapAt(high);
-    if (next && mix > 0.02 && sequence.bitmapAt(low) === base) drawCover(next, mix);
     return true;
   }
 
@@ -139,14 +151,14 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
 
   function updateCallouts(frame: number) {
     if (!callouts.length) return;
-    const data = (anchors as Record<Variant, Anchors>)[variant];
+    const data = anchorsFor(variant);
     const lastIndex = data.stages[signalStages[0].id].length - 1;
     const index = Math.min(lastIndex, Math.max(0, Math.round(frame) - data.firstFrame));
     for (const callout of callouts) {
       const stageIndex = Number(callout.dataset.index);
       const beat = stageBeats.first + stageIndex * stageBeats.step;
-      const arrived = clamp01((frame - beat + 4) / 6);
-      const active = frame >= beat - 4 && frame < beat + stageBeats.step - 4;
+      const arrived = clamp01((frame - beat + 8) / 12);
+      const active = frame >= beat - 8 && frame < beat + stageBeats.step - 8;
       const point = data.stages[callout.dataset.stage!][index];
       const anchor = toStage(point[0], point[1]);
       callout.style.setProperty("--anchor-x", `${anchor.x}px`);
@@ -165,7 +177,8 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
     if (snapped !== lastSnapped) {
       lastSnapped = snapped;
       sequence.setPlayhead(snapped);
-      sequence.loadScene(sceneFor(snapped).id, true);
+      // Until the opening has played, only its own frames are wanted.
+      if (revealDone) sequence.loadScene(sceneFor(snapped).id, true);
     }
     if (!needsDraw && Math.abs(frame - lastDrawn) < 0.01) return;
     needsDraw = false;
@@ -173,7 +186,7 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
       lastDrawn = frame;
       if (poster.dataset.visible === "true" && frame >= revealEndFrame) poster.dataset.visible = "false";
     }
-    if (frame >= stageBeats.first - 8 && frame <= sceneFor(stageBeats.first).last + 2) updateCallouts(frame);
+    if (frame >= stageBeats.first - 16 && frame <= sceneFor(stageBeats.first).last + 4) updateCallouts(frame);
     const daylit = frame > filmLastFrame ? 0 : clamp01((frame - daylightFrames.first) / (daylightFrames.last - daylightFrames.first));
     if (daylit !== lastDaylit) {
       lastDaylit = daylit;
@@ -294,9 +307,8 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
 
   // The reveal waits until its frames are in hand, so it plays through instead of stuttering.
   let revealStarted = false;
-  // Every second image is enough for the opening's brief run, and keeps its memory use modest.
-  const openingFrames = framesOf("reveal", variant).filter((frame) => frame % 2 === 1);
-  sequence.loadScene("reveal", true);
+  // A fraction of the images is enough for the opening's brief run, and keeps its size and memory modest.
+  const openingFrames = framesOf("reveal", variant).filter((frame) => (frame - 1) % openingEvery[variant] === 0 || frame === revealEndFrame);
   sequence.pin(openingFrames);
   const startWhenReady = () => {
     if (revealStarted) return;
