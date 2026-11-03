@@ -7,8 +7,9 @@ Render from the repo root:
   blender -b --factory-startup -P tools/film/film.py -- render --variant desktop --out <dir>
   blender -b --factory-startup -P tools/film/film.py -- render --variant mobile --frames 1,60,100 --out <dir>
 
-Every frame is a pure function of its number (apply_frame), so any frame can be re-rendered alone.
-Frame numbers are shared with src/film/scenes.ts: change them in both places.
+Every frame is a pure function of its time (apply_frame), so any frame can be re-rendered alone.
+Times below are in beats. A file's number is two per beat (see beat_of), which is what keeps scrolling
+smooth, and those numbers are shared with src/film/scenes.ts: change them in both places.
 """
 import bmesh
 import json
@@ -23,7 +24,7 @@ from mathutils import Vector
 
 SCENE_NAME = "CATS Film"
 
-# Frame ranges, inclusive. TURN is outside the film: the hero's pointer-driven turn.
+# Beat ranges, inclusive. TURN is outside the film: the hero's pointer-driven turn.
 REVEAL = (1, 36)
 TEARDOWN = (37, 116)
 LIGHT = (117, 196)
@@ -59,6 +60,15 @@ SCREEN_DISTANCE = {"desktop": 31.5, "mobile": 20.0}
 
 
 # ---- Maths
+
+def beat_of(number):
+    """File 1 is beat 1, file 3 is beat 2, file 2 falls halfway between them."""
+    return (number + 1) / 2
+
+
+def number_of(beat):
+    return beat * 2 - 1
+
 
 def clamp01(x):
     return max(0.0, min(1.0, x))
@@ -811,7 +821,7 @@ def station_camera(frame, variant):
     index = min(5, int(u))
     local = u - index
     centered = 2 * local - 1
-    offset = (0.7 * centered ** 3 + 0.3 * centered) * (STATION_STEP / 2)
+    offset = (0.5 * centered ** 3 + 0.5 * centered) * (STATION_STEP / 2)
     x = station_x(index) + offset
 
     # Per-station height and side offset, blended across each boundary.
@@ -1077,15 +1087,16 @@ def write_anchors(variant, path):
     """Callout positions per teardown frame plus the screen rectangle, for src/film/."""
     per_frame = {}
     setup_variant(variant)
-    for frame in range(STAGE_BEATS_START, TEARDOWN[1] + 1):
-        apply_frame(frame, variant)
-        per_frame[frame] = anchor_points(frame, variant)
+    first = number_of(STAGE_BEATS_START)
+    for number in range(first, number_of(TEARDOWN[1]) + 1):
+        apply_frame(beat_of(number), variant)
+        per_frame[number] = anchor_points(beat_of(number), variant)
     rect = screen_rect(variant)
     data = {}
     if os.path.exists(path):
         with open(path) as handle:
             data = json.load(handle)
-    data[variant] = {"stages": {stage: [per_frame[f][stage] for f in sorted(per_frame)] for stage in STAGES}, "firstFrame": STAGE_BEATS_START, "screen": rect}
+    data[variant] = {"stages": {stage: [per_frame[f][stage] for f in sorted(per_frame)] for stage in STAGES}, "firstFrame": first, "screen": rect}
     with open(path, "w") as handle:
         json.dump(data, handle, separators=(",", ":"))
 
@@ -1098,11 +1109,9 @@ def setup_variant(variant, scale=1.0):
 
 
 def film_frames(variant):
+    # The turn follows a pointer rather than scroll, so it stays at one image per beat everywhere.
     step = VARIANTS[variant]["step"]
-    frames = list(range(1, CLOSE[1] + 1, step))
-    if frames[-1] != CLOSE[1]:
-        frames.append(CLOSE[1])
-    return frames + list(range(TURN[0], TURN[1] + 1, step))
+    return list(range(1, number_of(CLOSE[1]) + 1, step)) + list(range(number_of(TURN[0]), number_of(TURN[1]) + 1, 2))
 
 
 def render(variant, out, frames=None, scale=1.0, samples=None):
@@ -1111,14 +1120,14 @@ def render(variant, out, frames=None, scale=1.0, samples=None):
         F.scene.eevee.taa_render_samples = samples
     os.makedirs(out, exist_ok=True)
     # A full render resumes where it stopped; frames asked for by number are always redone.
-    for frame in frames or film_frames(variant):
-        path = os.path.join(out, f"{frame:04d}.png")
+    for number in frames or film_frames(variant):
+        path = os.path.join(out, f"{number:04d}.png")
         if not frames and os.path.exists(path):
             continue
-        apply_frame(frame, variant)
+        apply_frame(beat_of(number), variant)
         F.scene.render.filepath = path
         bpy.ops.render.render(write_still=True, scene=F.scene.name)
-        print(f"FRAME {frame}", flush=True)
+        print(f"FRAME {number}", flush=True)
 
 
 def main():

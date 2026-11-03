@@ -611,6 +611,12 @@ html:not(.js) .mobile-menu a {
   content: "";
 }
 
+/* The hero's text sits close under the device, so its fade is short and leaves the glow alone. */
+.film-on .film-copy[data-scrim="short"] > .film-container::before {
+  inset: -2.5rem 0 -3rem;
+  background: linear-gradient(to top, rgb(6 6 6 / 0.96), rgb(6 6 6 / 0.82) calc(100% - 2.5rem), transparent);
+}
+
 .film-on .film-copy[data-scrim="top"] > .film-container::before {
   inset: -3rem 0 -6rem;
   background: linear-gradient(to bottom, rgb(6 6 6 / 0.94), rgb(6 6 6 / 0.82) calc(100% - 6rem), transparent);

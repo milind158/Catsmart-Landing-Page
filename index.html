@@ -13,7 +13,7 @@
         var connection = navigator.connection;
         var filmOff =
           matchMedia("(prefers-reduced-motion: reduce)").matches ||
-          (connection && connection.saveData) ||
+          (connection && (connection.saveData || /2g/.test(connection.effectiveType))) ||
           (navigator.deviceMemory && navigator.deviceMemory < 4);
         root.classList.add("js");
         if (!filmOff) root.classList.add("film-on");

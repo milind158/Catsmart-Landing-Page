@@ -11,7 +11,7 @@ export default function HeroSection() {
   return (
     <>
       <FilmScene chapter="reveal" group="reveal" anchorId="film-reveal" poster="reveal" timing={chapterTiming.reveal}>
-        <div data-film-text data-in="none" data-out="0.62" className="film-copy justify-end">
+        <div data-film-text data-in="none" data-out="0.62" data-scrim="short" className="film-copy justify-end">
           <div className="film-container w-full pb-12 md:pb-16">
             <p data-enter="fade" className="eyebrow text-brass">Castle Advanced Technologies &amp; Systems</p>
             <h1 className="film-display mt-5 md:mt-7">

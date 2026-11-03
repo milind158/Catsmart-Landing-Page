@@ -8,12 +8,12 @@ root=$1; q_desktop=${2:-68}; q_mobile=${3:-68}; force=${4:-}
 out=public/film
 scene_of() {
   local f=$1
-  if   (( f <= 36 ));  then echo reveal
-  elif (( f <= 116 )); then echo teardown
-  elif (( f <= 196 )); then echo light
-  elif (( f <= 346 )); then echo technologies
-  elif (( f <= 416 )); then echo screen
-  elif (( f <= 496 )); then echo close
+  if   (( f <= 71 ));  then echo reveal
+  elif (( f <= 231 )); then echo teardown
+  elif (( f <= 391 )); then echo light
+  elif (( f <= 691 )); then echo technologies
+  elif (( f <= 831 )); then echo screen
+  elif (( f <= 991 )); then echo close
   else echo turn; fi
 }
 for variant in desktop mobile; do
@@ -29,10 +29,8 @@ for variant in desktop mobile; do
   xargs -P 8 -L 1 zsh -c '[[ -z "'$force'" && -f $2 && $2 -nt $1 ]] || cwebp -quiet -q '$q' -m 6 -af -sharp_yuv "$1" -o "$2"' _ < $list
   rm -f $list
   mkdir -p $out/posters/$variant
-  for pair in reveal:36 teardown:112 light:172 big-data-analytics:209 optoelectronics:234 image-processing:258 sound-processing:283 command-control:308 research-customisation:336 screen:396 close:470; do
+  for pair in reveal:71 teardown:223 light:343 big-data-analytics:417 optoelectronics:467 image-processing:515 sound-processing:565 command-control:615 research-customisation:671 screen:791 close:939; do
     name=${pair%%:*}; f=${pair##*:}
-    # Mobile renders every second frame from 1, so even frames round down.
-    [[ $variant == mobile ]] && (( f % 2 == 0 )) && f=$((f - 1))
     cwebp -quiet -q $((q + 8)) -m 6 "$root/$variant/$(printf %04d $f).png" -o "$out/posters/$variant/$name.webp"
   done
   print "$variant: $(find $out -path "*/$variant/*" -name '*.webp' -not -path '*/posters/*' | wc -l | tr -d ' ') frames, $(find $out -path "*/$variant/*" -name '*.webp' -not -path '*/posters/*' -print0 | xargs -0 du -ch | tail -1 | cut -f1)"

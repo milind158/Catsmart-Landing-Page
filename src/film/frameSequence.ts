@@ -1,12 +1,14 @@
-import { framesOf, frameUrl, isFilmFrame, variants, type Variant } from "./scenes";
+import { framesOf, frameUrl, isFilmFrame, stepAt, variants, type Variant } from "./scenes";
 
 const maxFetches = 6;
 const maxDecodes = 3;
 // Decoded 1080p frames cost about 8 MB each, so only those near the playhead stay in memory.
 const maxBitmaps: Record<Variant, number> = { desktop: 64, mobile: 40 };
-const decodeBehind = 6;
+// Must fit inside half of maxBitmaps: eviction keeps the frames nearest the playhead either side,
+// so a longer reach ahead would decode frames only to throw them away again.
+const decodeBehind = 8;
 const decodeAhead = 18;
-const keyFrameEvery = 8;
+const keyFrameEvery = 16;
 
 // Loads film frames in stages and hands back the closest one available, so scrubbing never goes blank.
 export class FrameSequence {
@@ -32,7 +34,8 @@ export class FrameSequence {
   }
 
   snap(frame: number) {
-    return Math.floor((frame - 1) / this.step) * this.step + 1;
+    const step = stepAt(frame, this.variant);
+    return Math.floor((frame - 1) / step) * step + 1;
   }
 
   bitmapAt(frame: number) {
@@ -42,7 +45,7 @@ export class FrameSequence {
   nearest(frame: number) {
     const exact = this.bitmaps.get(frame);
     if (exact) return exact;
-    for (let offset = this.step; offset <= 96; offset += this.step) {
+    for (let offset = 1; offset <= 96; offset += 1) {
       const candidate = this.bitmaps.get(frame - offset) ?? this.bitmaps.get(frame + offset);
       if (candidate) return candidate;
     }

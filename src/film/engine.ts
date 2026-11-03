@@ -2,7 +2,7 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import anchors from "./anchors.json";
 import { FrameSequence } from "./frameSequence";
-import { daylightFrames, filmLastFrame, framesOf, revealEndFrame, sceneFor, sceneIds, signalStages, stageBeats, turnFrames, variants, type Variant } from "./scenes";
+import { daylightFrames, filmLastFrame, framesOf, revealEndFrame, sceneFor, sceneIds, signalStages, stageBeats, stepAt, turnFrames, variants, type Variant } from "./scenes";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -59,11 +59,13 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
   function measure() {
     stageWidth = stage.clientWidth;
     stageHeight = stage.clientHeight;
-    const ratio = Math.min(window.devicePixelRatio || 1, 1.5);
+    // Never larger than the frames themselves: extra canvas pixels cost time and add no detail.
+    const source = variants[variant];
+    const sharpest = Math.min(source.width / stageWidth, source.height / stageHeight);
+    const ratio = Math.min(window.devicePixelRatio || 1, 1.5, Math.max(1, sharpest));
     canvas.width = Math.round(stageWidth * ratio);
     canvas.height = Math.round(stageHeight * ratio);
 
-    const source = variants[variant];
     const scale = Math.max(canvas.width / source.width, canvas.height / source.height);
     const width = source.width * scale;
     const height = source.height * scale;
@@ -118,8 +120,9 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
     if (!base) return false;
     drawCover(base, 1);
     // A cross-fade to the next frame keeps slow scrolling from stepping visibly.
-    const high = low + sequence.step;
-    const mix = (frame - low) / sequence.step;
+    const step = stepAt(frame, variant);
+    const high = low + step;
+    const mix = (frame - low) / step;
     const next = sequence.bitmapAt(high);
     if (next && mix > 0.02 && sequence.bitmapAt(low) === base) drawCover(next, mix);
     return true;
@@ -143,8 +146,8 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
     for (const callout of callouts) {
       const stageIndex = Number(callout.dataset.index);
       const beat = stageBeats.first + stageIndex * stageBeats.step;
-      const arrived = clamp01((frame - beat + 2) / 3);
-      const active = frame >= beat - 2 && frame < beat + stageBeats.step - 2;
+      const arrived = clamp01((frame - beat + 4) / 6);
+      const active = frame >= beat - 4 && frame < beat + stageBeats.step - 4;
       const point = data.stages[callout.dataset.stage!][index];
       const anchor = toStage(point[0], point[1]);
       callout.style.setProperty("--anchor-x", `${anchor.x}px`);
@@ -167,6 +170,7 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
   }
 
   let lastDrawn = -1;
+  let lastDaylit = -1;
   let lastSnapped = -1;
   function tick() {
     const frame = currentFrame();
@@ -182,11 +186,16 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
       lastDrawn = frame;
       if (poster.dataset.visible === "true" && frame >= revealEndFrame) poster.dataset.visible = "false";
     }
-    updateCallouts(frame);
+    if (frame >= stageBeats.first - 8 && frame <= sceneFor(stageBeats.first).last + 2) updateCallouts(frame);
     const daylit = frame > filmLastFrame ? 0 : clamp01((frame - daylightFrames.first) / (daylightFrames.last - daylightFrames.first));
-    daylight.style.opacity = String(daylit);
-    scrim.style.opacity = String(1 - clamp01(daylit * 2.5));
-    document.documentElement.dataset.navSolid = String(frame >= daylightFrames.solidNav && frame <= filmLastFrame);
+    if (daylit !== lastDaylit) {
+      lastDaylit = daylit;
+      daylight.style.opacity = String(daylit);
+      scrim.style.opacity = String(1 - clamp01(daylit * 2.5));
+    }
+    // Writing to <html> makes the browser re-check styles across the page, so only do it on a change.
+    const navSolid = String(frame >= daylightFrames.solidNav && frame <= filmLastFrame);
+    if (navSolid !== document.documentElement.dataset.navSolid) document.documentElement.dataset.navSolid = navSolid;
   }
 
   function onScroll() {
@@ -299,7 +308,8 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
 
   // The reveal waits until its frames are in hand, so it plays through instead of stuttering.
   let revealStarted = false;
-  const openingFrames = framesOf("reveal", variant);
+  // Every second image is enough for the opening's brief run, and keeps its memory use modest.
+  const openingFrames = framesOf("reveal", variant).filter((frame) => frame % 2 === 1);
   sequence.loadScene("reveal", true);
   sequence.pin(openingFrames);
   const startWhenReady = () => {
