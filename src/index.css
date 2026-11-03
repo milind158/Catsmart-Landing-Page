@@ -536,12 +536,18 @@ html:not(.js) .mobile-menu a {
 }
 
 .film-stand-in {
+  padding: 0.5rem clamp(1rem, 4vw, 4rem);
+  color: rgb(var(--color-ivory-rgb) / 0.8);
+  font-size: 0.6875rem;
+}
+
+.film-on .film-stand-in {
   position: absolute;
   z-index: 2;
   right: clamp(1rem, 4vw, 4rem);
-  bottom: 0.75rem;
-  color: rgb(var(--color-ivory-rgb) / 0.75);
-  font-size: 0.6875rem;
+  bottom: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  background: rgb(6 6 6 / 0.8);
 }
 
 .film-on .film-chapters {
@@ -713,10 +719,10 @@ html:not(.js) .mobile-menu a {
     display: none;
   }
 
-  .film-stand-in {
+  .film-on .film-stand-in {
     right: auto;
     left: 1rem;
-    bottom: 0.5rem;
+    bottom: 0.125rem;
   }
 }
 

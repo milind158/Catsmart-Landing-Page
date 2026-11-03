@@ -38,8 +38,6 @@ export default function Film({ children }: { children: ReactNode }) {
           </picture>
           <div className="film-scrim" />
           <div className="film-daylight" />
-          {/* PLACEHOLDER: remove this tag when the real device replaces the stand-in. See tools/film/film.py. */}
-          <p className="film-stand-in">Stand-in device. Not CATS hardware.</p>
         </div>
       </div>
       <div className="film-chapters">{children}</div>
