@@ -10,7 +10,7 @@ export default {
       },
       colors: {
         navy: "var(--color-navy)",
-        ivory: "var(--color-ivory)",
+        ivory: "rgb(var(--color-ivory-rgb) / <alpha-value>)",
         brass: { DEFAULT: "var(--color-brass)", dark: "var(--color-brass-dark)" },
         "on-navy": "var(--color-body-on-navy)",
         "on-ivory": "var(--color-body-on-ivory)",

@@ -12,7 +12,8 @@
 
   /* PLACEHOLDER palette: not official brand colours. */
   --color-navy: #101b2b;
-  --color-ivory: #f4f1ea;
+  --color-ivory-rgb: 244 241 234;
+  --color-ivory: rgb(var(--color-ivory-rgb));
   --color-brass: #b0905a; /* On ivory, rules only: too faint for text. */
   --color-brass-dark: #7a5f2e;
   --color-body-on-navy: #b9bec6;
