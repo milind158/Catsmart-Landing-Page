@@ -32,10 +32,10 @@ export default function ProductsSection() {
             decoding="async"
             className="film-product-screen"
           />
-          <div data-film-text data-in="0.08" data-out="0.86" className="film-copy justify-end">
+          <div data-film-text data-in="0.08" data-out="0.86" data-scrim="side" className="film-copy justify-end">
             <div className="film-container w-full pb-10 md:pb-14">
               <h3 className="film-product-name">{product.name}</h3>
-              <div className="max-w-md">
+              <div className="film-product-text max-w-md">
                 <p className="mt-3 text-lg font-medium leading-7 text-ivory">{product.tagline}</p>
                 <p className="film-extra mt-3 text-[0.9375rem] leading-6 text-ivory/85">{product.description}</p>
                 <a href={product.route} className="group mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-ivory focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brass">
@@ -53,8 +53,8 @@ export default function ProductsSection() {
       </FilmScene>
 
       <FilmScene chapter="close" group="contact" poster="close" timing={chapterTiming.close}>
-        <div data-film-text data-in="0.18" data-out="0.72" className="film-copy justify-start pt-32 md:pt-40">
-          <div className="film-container w-full">
+        <div data-film-text data-in="0.18" data-out="0.72" data-scrim="top" className="film-copy justify-start">
+          <div className="film-container w-full pt-32 md:pt-36">
             <p className="film-heading max-w-[20ch]">From data to decisions. From insights to action.</p>
           </div>
         </div>

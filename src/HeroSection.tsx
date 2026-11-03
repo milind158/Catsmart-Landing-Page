@@ -30,12 +30,12 @@ export default function HeroSection() {
       </FilmScene>
 
       <FilmScene chapter="teardown" group="teardown" anchorId="film-teardown" poster="teardown" timing={chapterTiming.teardown}>
-        <div data-film-text data-in="0.2" data-out="0.95" className="film-copy justify-end md:justify-center">
+        <div data-film-text data-in="0.2" data-out="0.95" data-scrim="side" className="film-copy justify-end md:justify-center">
           <div className="film-container w-full pb-28 md:pb-0">
             <div className="max-w-[17rem] lg:max-w-sm">
               <p className="eyebrow text-brass">Optoelectronics</p>
               <h2 className="film-heading mt-4">{technologyDetails.optoelectronics.sections[1].heading}</h2>
-              <p className="mt-4 hidden text-base leading-7 text-ivory/85 md:block">{boardIntro}</p>
+              <p className="film-extra mt-4 text-base leading-7 text-ivory/85">{boardIntro}</p>
             </div>
           </div>
         </div>
@@ -53,7 +53,7 @@ export default function HeroSection() {
       <FilmScene chapter="light" group="light" anchorId="film-light" poster="light" timing={chapterTiming.light}>
         <div data-film-text data-in="0.3" data-out="0.9" className="film-copy justify-end">
           <div className="film-container w-full pb-16 md:pb-20">
-            <h2 className="film-display max-w-[14ch]">{signalPath.heading}</h2>
+            <h2 className="film-display max-w-[20ch]">{signalPath.heading}</h2>
             <p className="mt-6 max-w-2xl text-base leading-7 text-ivory/90 md:text-lg md:leading-8">{signalSequence}</p>
           </div>
         </div>

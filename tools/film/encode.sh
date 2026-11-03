@@ -1,9 +1,10 @@
 #!/bin/zsh
 # Encodes rendered PNGs into public/film/<scene>/<variant>/NNNN.webp and picks the posters.
-# usage: tools/film/encode.sh <png-root> [desktop-quality] [mobile-quality]
+# usage: tools/film/encode.sh <png-root> [desktop-quality] [mobile-quality] [force]
+# Pass force after changing quality: otherwise only frames newer than their WebP are encoded.
 # <png-root> holds desktop/ and mobile/ from film.py. Frame ranges match film.py and src/film/scenes.ts.
 set -e
-root=$1; q_desktop=${2:-62}; q_mobile=${3:-56}
+root=$1; q_desktop=${2:-68}; q_mobile=${3:-68}; force=${4:-}
 out=public/film
 scene_of() {
   local f=$1
@@ -25,7 +26,7 @@ for variant in desktop mobile; do
     print -r -- "$png $out/$scene/$variant/$name.webp" >> $list
   done
   # Skip frames already encoded, so re-rendering a range only re-encodes that range.
-  xargs -P 8 -L 1 zsh -c '[[ -f $2 && $2 -nt $1 ]] || cwebp -quiet -q '$q' -m 6 -af -sharp_yuv "$1" -o "$2"' _ < $list
+  xargs -P 8 -L 1 zsh -c '[[ -z "'$force'" && -f $2 && $2 -nt $1 ]] || cwebp -quiet -q '$q' -m 6 -af -sharp_yuv "$1" -o "$2"' _ < $list
   rm -f $list
   mkdir -p $out/posters/$variant
   for pair in reveal:36 teardown:112 light:172 big-data-analytics:209 optoelectronics:234 image-processing:258 sound-processing:283 command-control:308 research-customisation:336 screen:396 close:470; do

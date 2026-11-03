@@ -410,13 +410,13 @@ html:not(.js) .mobile-menu a {
 
 .film-product-name {
   font-family: "Source Serif 4 Variable", Georgia, serif;
-  font-size: clamp(3rem, 7.2vw, 8rem);
+  font-size: clamp(3rem, 6.4vw, 7rem);
   font-weight: 400;
   letter-spacing: -0.025em;
   line-height: 1;
 }
 
-.film-stage,
+.film-stage-track,
 .film-progress,
 .film-skip {
   display: none;
@@ -485,16 +485,19 @@ html:not(.js) .mobile-menu a {
 
 /* Film mode: the stage stays put behind the page while the chapters scroll over it. */
 
-.film-on .film-stage {
-  position: sticky;
+.film-on .film-stage-track {
+  position: absolute;
   z-index: 0;
-  top: 0;
+  inset: 0;
   display: block;
+}
+
+.film-stage {
+  position: sticky;
+  top: 0;
   overflow: hidden;
   height: 100vh;
   height: 100lvh;
-  margin-bottom: -100vh;
-  margin-bottom: -100lvh;
   background: var(--color-studio);
 }
 
@@ -522,8 +525,8 @@ html:not(.js) .mobile-menu a {
 .film-scrim {
   z-index: 2;
   background:
-    linear-gradient(to bottom, rgb(6 6 6 / 0.72), transparent 16%),
-    linear-gradient(to top, rgb(6 6 6 / 0.88), rgb(6 6 6 / 0.5) 26%, transparent 58%);
+    linear-gradient(to bottom, rgb(6 6 6 / 0.78), transparent 17%),
+    linear-gradient(to top, rgb(6 6 6 / 0.55), transparent 14%);
 }
 
 .film-daylight {
@@ -561,6 +564,12 @@ html:not(.js) .mobile-menu a {
   margin-bottom: 0;
 }
 
+/* Section links land just inside the chapter, where its text has already arrived. */
+.film-on #technologies,
+.film-on #products {
+  scroll-margin-top: calc(-4rem - 22vh);
+}
+
 .film-on .film-poster {
   display: none;
 }
@@ -581,6 +590,50 @@ html:not(.js) .mobile-menu a {
 
 .film-on [data-film-text]:not([data-in="none"]) {
   opacity: 0;
+}
+
+/* Each chapter darkens only what is behind its own text, and only while that text is on screen. */
+
+.film-on .film-copy {
+  isolation: isolate;
+}
+
+/* Sized from the text block itself, so a longer block always stays on dark. */
+.film-on .film-copy > .film-container {
+  position: relative;
+}
+
+.film-on .film-copy > .film-container::before {
+  position: absolute;
+  z-index: -1;
+  inset: -8rem 0 -3rem;
+  background: linear-gradient(to top, rgb(6 6 6 / 0.96), rgb(6 6 6 / 0.88) calc(100% - 8rem), transparent);
+  content: "";
+}
+
+.film-on .film-copy[data-scrim="top"] > .film-container::before {
+  inset: -3rem 0 -6rem;
+  background: linear-gradient(to bottom, rgb(6 6 6 / 0.94), rgb(6 6 6 / 0.82) calc(100% - 6rem), transparent);
+}
+
+@media (min-width: 768px) {
+  .film-on .film-copy[data-scrim="side"] > .film-container::before {
+    display: none;
+  }
+
+  .film-on .film-copy[data-scrim="side"]::before {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    background: linear-gradient(to right, rgb(6 6 6 / 0.94), rgb(6 6 6 / 0.82) 24%, transparent 40%);
+    content: "";
+  }
+
+  /* Product text keeps to the column left of the screen. */
+  .film-on .film-product-name,
+  .film-on .film-product-text {
+    max-width: 25vw;
+  }
 }
 
 .film-on .film-scene.is-active a {
@@ -837,7 +890,7 @@ html[data-nav-solid="true"] .film-progress {
 }
 
 @media print {
-  .film-stage,
+  .film-stage-track,
   .film-progress,
   .film-skip {
     display: none !important;

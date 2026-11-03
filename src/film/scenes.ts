@@ -22,6 +22,9 @@ const scenes = [
 
 export const sceneIds = scenes.map((scene) => scene.id);
 
+// The film and the hero's turn are separate runs of numbers, with a gap between them.
+export const isFilmFrame = (frame: number) => (frame >= 1 && frame <= filmLastFrame) || (frame >= turnFrames.first && frame <= turnFrames.last);
+
 export const sceneFor = (frame: number) => scenes.find((scene) => frame <= scene.last) ?? scenes[scenes.length - 1];
 
 export const framesOf = (sceneId: string, variant: Variant) => {
@@ -53,7 +56,7 @@ export const chapterTiming = {
 } satisfies Record<string, ChapterTiming | ((index: number) => ChapterTiming)>;
 
 // The last frames climb into daylight; the page finishes the step with its own exact ivory.
-export const daylightFrames = { first: 480, last: filmLastFrame };
+export const daylightFrames = { first: 474, solidNav: 484, last: filmLastFrame };
 
 // The five layers of the teardown, in signal order. Text is from the OAIC overview in technologyDetails.ts.
 export const signalStages = [

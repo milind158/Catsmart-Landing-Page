@@ -1110,9 +1110,10 @@ def render(variant, out, frames=None, scale=1.0, samples=None):
     if samples:
         F.scene.eevee.taa_render_samples = samples
     os.makedirs(out, exist_ok=True)
+    # A full render resumes where it stopped; frames asked for by number are always redone.
     for frame in frames or film_frames(variant):
         path = os.path.join(out, f"{frame:04d}.png")
-        if os.path.exists(path):
+        if not frames and os.path.exists(path):
             continue
         apply_frame(frame, variant)
         F.scene.render.filepath = path

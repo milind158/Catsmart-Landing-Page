@@ -19,6 +19,7 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
   const stage = root.querySelector<HTMLElement>(".film-stage")!;
   const poster = root.querySelector<HTMLElement>(".film-stage-poster")!;
   const daylight = root.querySelector<HTMLElement>(".film-daylight")!;
+  const scrim = root.querySelector<HTMLElement>(".film-scrim")!;
   const chapters = [...root.querySelectorAll<HTMLElement>("[data-chapter]")];
   const callouts = [...root.querySelectorAll<HTMLElement>("[data-stage]")];
   const progressCells = [...document.querySelectorAll<HTMLElement>("[data-progress-cell]")];
@@ -37,6 +38,7 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
   let needsDraw = true;
   let revealDone = false;
   let failed = false;
+  let spreadLoaded = false;
 
   const playhead = { frame: 1 };
   const pointer = { turn: 0 };
@@ -181,17 +183,24 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
       if (poster.dataset.visible === "true" && frame >= revealEndFrame) poster.dataset.visible = "false";
     }
     updateCallouts(frame);
-    daylight.style.opacity = String(clamp01((frame - daylightFrames.first) / (daylightFrames.last - daylightFrames.first)));
+    const daylit = frame > filmLastFrame ? 0 : clamp01((frame - daylightFrames.first) / (daylightFrames.last - daylightFrames.first));
+    daylight.style.opacity = String(daylit);
+    scrim.style.opacity = String(1 - clamp01(daylit * 2.5));
+    document.documentElement.dataset.navSolid = String(frame >= daylightFrames.solidNav && frame <= filmLastFrame);
   }
 
   function onScroll() {
     const scrollY = window.scrollY;
     updateProgress(scrollY);
-    const last = segments[segments.length - 1];
-    if (last) document.documentElement.dataset.navSolid = String(scrollY > last.bottom + stageHeight - 64);
     if (!revealDone) return;
     moveTo(frameForScroll(scrollY));
 
+    // Nothing past the opening downloads until the visitor shows they want to go further.
+    if (scrollY <= 0) return;
+    if (!spreadLoaded) {
+      spreadLoaded = true;
+      sequence.loadKeyFrames(sceneIds.filter((id) => id !== "turn"));
+    }
     // Start the next chapter's frames when it is one viewport away.
     const upcoming = sceneFor(Math.min(filmLastFrame, frameForScroll(scrollY + stageHeight)));
     sequence.loadScene(upcoming.id);
@@ -199,6 +208,7 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
 
   function onPointerMove(event: PointerEvent) {
     if (!revealDone || event.pointerType !== "mouse" || window.scrollY > stageHeight * 0.35) return;
+    sequence.loadScene("turn");
     turnTo(clamp01(event.clientX / window.innerWidth) * 2 - 1);
   }
 
@@ -210,6 +220,7 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
       sequence = new FrameSequence(variant, onFrameReady, onFrameFailed);
       sequence.loadScene(sceneFor(Math.round(playhead.frame)).id, true);
       lastSnapped = -1;
+      spreadLoaded = false;
     }
     measure();
     onScroll();
@@ -268,8 +279,6 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
     sequence.unpin();
     moveTo(frameForScroll(window.scrollY), playhead.frame);
     onScroll();
-    sequence.loadScene("turn");
-    sequence.loadKeyFrames(sceneIds);
   }
 
   measure();

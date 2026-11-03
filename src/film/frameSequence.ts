@@ -1,4 +1,4 @@
-import { framesOf, frameUrl, variants, type Variant } from "./scenes";
+import { framesOf, frameUrl, isFilmFrame, variants, type Variant } from "./scenes";
 
 const maxFetches = 6;
 const maxDecodes = 3;
@@ -76,7 +76,7 @@ export class FrameSequence {
     const wanted: number[] = [];
     for (let offset = -behind; offset <= ahead; offset += 1) {
       const target = this.snap(frame + offset * this.step);
-      if (target >= 1 && !wanted.includes(target)) wanted.push(target);
+      if (isFilmFrame(target) && !wanted.includes(target)) wanted.push(target);
     }
     wanted.sort((a, b) => Math.abs(a - frame) - Math.abs(b - frame));
 

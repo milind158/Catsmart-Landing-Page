@@ -44,7 +44,7 @@ export default function ContactSection() {
     setSubmissionAttempted(false);
   }
 
-  const fieldClass = "motion-hover mt-2 min-h-12 w-full border-0 border-b border-navy/40 bg-transparent px-0 py-3 text-base text-navy outline-none hover:border-navy focus:border-navy focus:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brass-dark";
+  const fieldClass = "motion-hover mt-2 min-h-12 w-full border-0 border-b border-navy/60 bg-transparent px-0 py-3 text-base text-navy outline-none hover:border-navy focus:border-navy focus:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brass-dark";
   const errorMessage = (field: ContactField) => errors[field] && <p id={`contact-${field}-error`} role="alert" className="mt-1.5 text-xs leading-5 text-[#9b1c1c]">{errors[field]}</p>;
   const invalidStyle = (field: ContactField) => errors[field] ? { borderColor: "#9b1c1c" } : undefined;
 
@@ -79,7 +79,7 @@ export default function ContactSection() {
                 <option>Technical Support</option>
                 <option>Other</option>
               </select>
-              <span aria-hidden="true" className="pointer-events-none absolute right-4 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 border-b border-r border-navy/70" />
+              <span aria-hidden="true" className="pointer-events-none absolute right-4 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 border-b border-r border-navy" />
             </div>
             {errorMessage("reason")}
           </div>
