@@ -1,6 +1,7 @@
 import ContactSection from "./ContactSection";
 import SiteFooter from "./SiteFooter";
 import SiteNavigation from "./SiteNavigation";
+import { MaskedLine, delayStyle } from "./motion";
 import { type Technology, technologies, technologyRoute } from "./technologies";
 import { technologyDetails, technologyHeroImages } from "./technologyDetails";
 
@@ -23,9 +24,9 @@ export default function TechnologyPage({ technology }: { technology: Technology 
         <div aria-hidden="true" className="technology-hero-overlay pointer-events-none absolute inset-0 z-[1]" />
         <div className="relative z-10 mx-auto flex min-h-[68vh] max-w-7xl items-center px-6 pb-16 pt-28 md:min-h-[76vh] md:px-10 md:py-28">
           <div className="max-w-4xl">
-            <h1 className="text-gradient-primary detail-hero-title break-words text-5xl font-black md:text-7xl lg:text-8xl">{technology.heading}</h1>
-            <p className="mt-6 max-w-2xl text-xl font-semibold leading-snug text-[var(--subheading)] md:text-2xl">{technology.supportingText}</p>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--body-copy)]">{detail.introduction}</p>
+            <h1 className="text-gradient-primary detail-hero-title break-words text-5xl md:text-7xl lg:text-8xl"><MaskedLine trigger="load">{technology.heading}</MaskedLine></h1>
+            <p data-enter="rise" style={delayStyle(200)} className="mt-6 max-w-2xl text-xl leading-snug text-[var(--subheading)] md:text-2xl">{technology.supportingText}</p>
+            <p data-enter="rise" style={delayStyle(320)} className="mt-5 max-w-2xl text-base leading-7 text-[var(--body-copy)]">{detail.introduction}</p>
           </div>
         </div>
       </section>

@@ -3,6 +3,7 @@ import { type SoftwareProduct, softwareDetails, softwareProducts } from "./softw
 import ContactSection from "./ContactSection";
 import SiteFooter from "./SiteFooter";
 import SiteNavigation from "./SiteNavigation";
+import { MaskedLine, delayStyle } from "./motion";
 
 const sectionClass = "mx-auto max-w-6xl px-6 py-20 md:px-10 md:py-28";
 const workflowSectionClass = "mx-auto max-w-6xl px-6 py-16 md:px-10 md:py-20";
@@ -27,14 +28,14 @@ export default function SoftwarePage({ product }: { product: SoftwareProduct }) 
       <SiteNavigation showBack />
 
       <section className="relative border-y border-white/10">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_78%_48%,rgba(226,58,50,0.10),transparent_36%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_78%_48%,rgba(240,163,94,0.1),transparent_40%)]" />
         <div className="relative mx-auto grid min-h-[72vh] max-w-7xl items-center gap-12 px-6 py-20 md:grid-cols-[0.9fr_1.1fr] md:px-10 md:py-28">
           <div className="min-w-0">
-            <h1 className="text-gradient-primary detail-hero-title break-words text-5xl font-black md:text-7xl lg:text-8xl">{product.name}</h1>
-            <p className="mt-6 max-w-2xl break-words text-xl font-semibold leading-snug text-[var(--subheading)] md:text-2xl">{detail.heroTagline ?? product.tagline}</p>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--body-copy)]">{detail.introduction}</p>
+            <h1 className="text-gradient-primary detail-hero-title break-words text-5xl md:text-7xl lg:text-8xl"><MaskedLine trigger="load">{product.name}</MaskedLine></h1>
+            <p data-enter="rise" style={delayStyle(200)} className="mt-6 max-w-2xl break-words text-xl leading-snug text-[var(--subheading)] md:text-2xl">{detail.heroTagline ?? product.tagline}</p>
+            <p data-enter="rise" style={delayStyle(320)} className="mt-5 max-w-2xl text-base leading-7 text-[var(--body-copy)]">{detail.introduction}</p>
           </div>
-          <div className="w-full min-w-0">
+          <div data-enter="rise" style={delayStyle(260)} className={`w-full min-w-0${imageFailed ? "" : " device-frame"}`}>
             {!imageFailed && <img
               src={product.image.src}
               alt={`${product.name} product image`}
