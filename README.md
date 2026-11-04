@@ -24,7 +24,7 @@ npm run dev
 
 Upload `dist/` to any static host. The build pre-renders a real HTML file for every page, each with its own title and description, so content is visible without JavaScript and deep links need no rewrite rules. Point the host's "not found" page at `404.html`.
 
-The film's frames are in `public/film/`, which git ignores because of its size (342 MB). A fresh clone has no frames, so copy them in before building, or the film falls back to missing posters. Serve `/film/` with long-lived cache headers.
+The film's frames are in `public/film/`, which git ignores because of its size (about 272 MB). A fresh clone has no frames, so copy them in before building, or the film falls back to missing posters. Serve `/film/` with long-lived cache headers.
 
 ## Edit content
 
@@ -49,7 +49,7 @@ This needs Blender 5.2, a GPU, `zsh` and `cwebp`, and picks up where it stopped 
 
 Frame numbers are shared by `tools/film/film.py`, `tools/film/encode.sh`, `tools/film/render_all.sh` and `src/film/scenes.ts`: change them together.
 
-Screens with more than 2000 device pixels across and at least 8 GB of memory, where reported, start on 1080p frames and move up to 4K if six test frames arrive quickly enough. Phones get a portrait version. Reduced motion, Save-Data, 2G and low-memory devices get posters and text.
+While it moves, the film plays every second 1080p frame, or a portrait version on phones. Screens with more than 2000 device pixels across and at least 8 GB of memory, where reported, also fetch one 4K frame whenever the picture stops. Reduced motion, Save-Data, 2G and low-memory devices get posters and text.
 
 ## Not configured yet
 
