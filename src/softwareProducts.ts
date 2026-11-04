@@ -34,7 +34,7 @@ export type SoftwareDetail = {
   introduction: string;
 };
 
-export const softwareLoginRoute: string | null = null;
+export const softwareLoginRoute: string | null = "https://catsmart.io/";
 
 export const softwareProducts: SoftwareProduct[] = [
   {

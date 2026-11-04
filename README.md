@@ -54,5 +54,4 @@ While it moves, the film plays every second 1080p frame, or a portrait version o
 ## Not configured yet
 
 - The contact form validates input but does not send it anywhere.
-- The Login link has no destination.
 - The logo, favicon and brand colours are placeholders.
