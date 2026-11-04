@@ -21,6 +21,9 @@ const widestBlend = 8;
 export class FrameSequence {
   private blobs = new Map<number, Blob>();
   private blobBytes = 0;
+  private firstFetchAt = 0;
+  private lastFetchAt = 0;
+  framesFetched = 0;
   private lastMove = 0;
   private stride = 1;
   private bitmaps = new Map<number, ImageBitmap>();
@@ -135,6 +138,11 @@ export class FrameSequence {
     this.pinned.clear();
   }
 
+  // How fast frames have really been arriving. Browsers' own connection estimates are too unreliable to use.
+  framesPerSecond() {
+    return this.framesFetched / Math.max((this.lastFetchAt - this.firstFetchAt) / 1000, 0.001);
+  }
+
   isDecoded(frame: number) {
     return this.bitmaps.has(frame);
   }
@@ -161,6 +169,7 @@ export class FrameSequence {
       const frame = this.queue.shift()!;
       this.queued.delete(frame);
       this.fetching.add(frame);
+      this.firstFetchAt ||= performance.now();
       fetch(frameUrl(frame, this.variant), { signal: this.controller.signal })
         .then((response) => {
           if (!response.ok) throw new Error(String(response.status));
@@ -169,6 +178,8 @@ export class FrameSequence {
         .then((blob) => {
           this.blobs.set(frame, blob);
           this.blobBytes += blob.size;
+          this.framesFetched += 1;
+          this.lastFetchAt = performance.now();
           this.evictBlobs();
           this.fetching.delete(frame);
           if (this.pinned.has(frame) || Math.abs(frame - this.playhead) <= this.limits.ahead * this.step * this.stride) this.decodeQueue.push(frame);
