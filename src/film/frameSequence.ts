@@ -2,14 +2,14 @@ import { framesOf, frameUrl, isFilmFrame, stepAt, variants, type Variant } from 
 
 const maxFetches = 6;
 const maxDecodes = 3;
-// A decoded frame costs about 33 MB at 4K and 8 MB at 1080p, so only those near the playhead stay in memory.
+// A decoded 1080p frame costs about 8 MB, so only those near the playhead stay in memory.
 // reach must fit inside half of maxBitmaps: eviction keeps the frames nearest the playhead either side,
 // so a longer reach ahead would decode frames only to throw them away again. decodesPerSecond sets how
-// many frames to skip when scrolling faster than they can be decoded.
-const limits: Record<Variant, { maxBitmaps: number; behind: number; ahead: number; decodesPerSecond: number }> = {
-  uhd: { maxBitmaps: 24, behind: 3, ahead: 10, decodesPerSecond: 36 },
-  desktop: { maxBitmaps: 64, behind: 8, ahead: 18, decodesPerSecond: 120 },
-  mobile: { maxBitmaps: 40, behind: 6, ahead: 14, decodesPerSecond: 60 },
+// many frames to skip when scrolling faster than they can be decoded. fetchAhead is how many frames
+// past that are downloaded in advance: about two seconds of medium scrolling, and nothing further.
+const limits: Record<Variant, { maxBitmaps: number; behind: number; ahead: number; decodesPerSecond: number; fetchAhead: number }> = {
+  desktop: { maxBitmaps: 64, behind: 8, ahead: 18, decodesPerSecond: 120, fetchAhead: 48 },
+  mobile: { maxBitmaps: 40, behind: 6, ahead: 14, decodesPerSecond: 60, fetchAhead: 48 },
 };
 const keyFrameEvery = 32;
 // Compressed frames are kept for going back, up to this much, and refetched from the browser's cache after.
@@ -21,13 +21,11 @@ const widestBlend = 8;
 export class FrameSequence {
   private blobs = new Map<number, Blob>();
   private blobBytes = 0;
-  private firstFetchAt = 0;
-  private lastFetchAt = 0;
-  framesFetched = 0;
   private lastMove = 0;
   private stride = 1;
   private bitmaps = new Map<number, ImageBitmap>();
   private queue: number[] = [];
+  private background: number[] = [];
   private queued = new Set<number>();
   private fetching = new Set<number>();
   private decodeQueue: number[] = [];
@@ -78,16 +76,10 @@ export class FrameSequence {
     return undefined;
   }
 
-  // Key frames first and the rest after, so a scene is usable long before it has fully arrived.
-  loadScene(sceneId: string, urgent = false) {
+  loadScene(sceneId: string) {
     if (this.loadedScenes.has(sceneId)) return;
     this.loadedScenes.add(sceneId);
-    const frames = framesOf(sceneId, this.variant);
-    const keys = frames.filter((_, index) => index % keyFrameEvery === 0);
-    const rest = frames.filter((_, index) => index % keyFrameEvery !== 0);
-    const order = [...keys, ...rest];
-    if (urgent) this.enqueueFront(order);
-    else this.enqueueBack(order);
+    this.enqueueBack(framesOf(sceneId, this.variant));
   }
 
   // Quietly fetches a thin spread across the whole film, so chapter jumps land near the right image.
@@ -105,6 +97,7 @@ export class FrameSequence {
     this.lastMove = now;
     // Faster than decoding can follow, every frame would arrive too late: take fewer, further ahead.
     this.stride = Math.min(8, Math.max(1, Math.ceil(speed / this.step / this.limits.decodesPerSecond)));
+    const direction = moved >= 0 ? 1 : -1;
     const ahead = moved >= 0 ? this.limits.ahead : this.limits.behind;
     const behind = moved >= 0 ? this.limits.behind : this.limits.ahead;
     const wanted: number[] = [];
@@ -122,7 +115,14 @@ export class FrameSequence {
       if (this.blobs.has(target)) this.decodeQueue.push(target);
       else missing.push(target);
     }
-    this.enqueueFront(missing);
+    // Replaces what was queued: frames the visitor has already passed are no longer worth downloading.
+    const reach = (direction > 0 ? ahead : behind) * this.stride * this.step;
+    for (let count = 1; count <= this.limits.fetchAhead; count += 1) {
+      const target = start + direction * (reach + count * this.stride * this.step);
+      if (isFilmFrame(target) && !this.blobs.has(target) && !this.bitmaps.has(target)) missing.push(target);
+    }
+    this.queue = missing.filter((target) => !this.fetching.has(target));
+    this.pumpFetches();
     this.pumpDecodes();
   }
 
@@ -138,11 +138,6 @@ export class FrameSequence {
     this.pinned.clear();
   }
 
-  // How fast frames have really been arriving. Browsers' own connection estimates are too unreliable to use.
-  framesPerSecond() {
-    return this.framesFetched / Math.max((this.lastFetchAt - this.firstFetchAt) / 1000, 0.001);
-  }
-
   isDecoded(frame: number) {
     return this.bitmaps.has(frame);
   }
@@ -151,25 +146,25 @@ export class FrameSequence {
     const fresh = frames.filter((frame) => !this.blobs.has(frame) && !this.fetching.has(frame));
     const moving = new Set(fresh);
     this.queue = [...fresh, ...this.queue.filter((frame) => !moving.has(frame))];
-    fresh.forEach((frame) => this.queued.add(frame));
     this.pumpFetches();
   }
 
+  // Waits behind anything the playhead needs.
   private enqueueBack(frames: number[]) {
     for (const frame of frames) {
       if (this.queued.has(frame) || this.blobs.has(frame) || this.fetching.has(frame)) continue;
       this.queued.add(frame);
-      this.queue.push(frame);
+      this.background.push(frame);
     }
     this.pumpFetches();
   }
 
   private pumpFetches() {
-    while (this.fetching.size < maxFetches && this.queue.length) {
-      const frame = this.queue.shift()!;
+    while (this.fetching.size < maxFetches && (this.queue.length || this.background.length)) {
+      const frame = this.queue.shift() ?? this.background.shift()!;
       this.queued.delete(frame);
+      if (this.blobs.has(frame) || this.fetching.has(frame)) continue;
       this.fetching.add(frame);
-      this.firstFetchAt ||= performance.now();
       fetch(frameUrl(frame, this.variant), { signal: this.controller.signal })
         .then((response) => {
           if (!response.ok) throw new Error(String(response.status));
@@ -178,8 +173,6 @@ export class FrameSequence {
         .then((blob) => {
           this.blobs.set(frame, blob);
           this.blobBytes += blob.size;
-          this.framesFetched += 1;
-          this.lastFetchAt = performance.now();
           this.evictBlobs();
           this.fetching.delete(frame);
           if (this.pinned.has(frame) || Math.abs(frame - this.playhead) <= this.limits.ahead * this.step * this.stride) this.decodeQueue.push(frame);
@@ -246,6 +239,7 @@ export class FrameSequence {
     this.bitmaps.clear();
     this.blobs.clear();
     this.queue = [];
+    this.background = [];
     this.decodeQueue = [];
   }
 }

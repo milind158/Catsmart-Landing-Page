@@ -1,11 +1,14 @@
 // Frame numbers match the files from tools/film/film.py and tools/film/encode.sh: change them together.
-export type Variant = "uhd" | "desktop" | "mobile";
+export type Variant = "desktop" | "mobile";
 
+// What plays while the film moves. Every frame number exists on disk, but every second one is plenty with cross-fading.
 export const variants: Record<Variant, { step: number; width: number; height: number }> = {
-  uhd: { step: 1, width: 3840, height: 2160 },
-  desktop: { step: 1, width: 1920, height: 1080 },
+  desktop: { step: 2, width: 1920, height: 1080 },
   mobile: { step: 2, width: 720, height: 1280 },
 };
+
+// Shown only when the picture is at rest: motion hides the extra detail, so it is not worth downloading while moving.
+export const stillSize = { width: 3840, height: 2160 };
 
 export const filmLastFrame = 1981;
 export const revealEndFrame = 141;
@@ -42,7 +45,7 @@ export const framesOf = (sceneId: string, variant: Variant) => {
   return frames;
 };
 
-export const frameUrl = (frame: number, variant: Variant) =>
+export const frameUrl = (frame: number, variant: Variant | "uhd") =>
   `/film/${sceneFor(frame).id}/${variant}/${String(frame).padStart(4, "0")}.webp`;
 
 // Each chapter of the page plays one stretch of the film. Length is in viewport heights of scroll.

@@ -2,7 +2,7 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import anchors from "./anchors.json";
 import { FrameSequence } from "./frameSequence";
-import { daylightFrames, filmLastFrame, framesOf, isFilmFrame, revealEndFrame, sceneFor, sceneIds, signalStages, stageBeats, turnFrames, variants, type Variant } from "./scenes";
+import { daylightFrames, filmLastFrame, frameUrl, framesOf, revealEndFrame, sceneFor, sceneIds, signalStages, stageBeats, stillSize, turnFrames, variants, type Variant } from "./scenes";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -15,16 +15,14 @@ const screenSuitsUhd = () => {
   const { deviceMemory } = navigator as Navigator & { deviceMemory?: number };
   return window.innerWidth * (window.devicePixelRatio || 1) > 2000 && (deviceMemory ?? 8) >= 8;
 };
-// A few real 4K frames are timed before moving up. Slower than this, 4K could not keep up with scrolling.
-const uhdProbeFrames = 6;
-const uhdMinimumFramesPerSecond = 30;
-// The 4K and 1080p frames are the same picture, so they share one set of positions.
-const anchorsFor = (variant: Variant) => (anchors as Record<"desktop" | "mobile", Anchors>)[variant === "mobile" ? "mobile" : "desktop"];
+// How long the picture must be still before its 4K frame is fetched, and how long that frame takes to fade in.
+const stillAfterMs = 180;
+const stillFadeMs = 250;
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 const revealSeconds = 1.3;
 const posterAfterMs = 2500;
-// The sharpest the canvas gets, in device pixels per CSS pixel.
-const sharpestRatio: Record<Variant, number> = { uhd: 2, desktop: 1.5, mobile: 1.5 };
+// The sharpest the canvas gets, in device pixels per CSS pixel, with and without 4K stills.
+const sharpestRatio = { still: 2, moving: 1.5 };
 // How much of the opening stays decoded for its short run. The picture blends across the gaps.
 const openingEvery = 4;
 
@@ -68,49 +66,55 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
     onFailure();
   };
   let sequence = new FrameSequence(variant, onFrameReady, onFrameFailed);
-  let uhdDecided = false;
-  let nextSequence: FrameSequence | undefined;
-  let nextFrame = 0;
+  let suitsStills = false;
+  let still: { bitmap: ImageBitmap; alpha: number } | undefined;
+  let stillController: AbortController | undefined;
+  let lastFrame = -1;
+  let movedAt = 0;
+  let lastTickAt = 0;
 
-  // Every visitor starts on the lighter frames. Where they arrive fast enough, the film moves up to 4K,
-  // and the change waits until the matching 4K frame is ready, so the picture never blinks.
-  function considerUhd() {
-    if (uhdDecided || variant !== "desktop") return;
-    uhdDecided = true;
-    if (!screenSuitsUhd()) return;
-    nextFrame = sequence.snap(playhead.frame);
-    const probe = Array.from({ length: uhdProbeFrames }, (_, index) => nextFrame + index * 4).filter(isFilmFrame);
-    nextSequence = new FrameSequence("uhd", onFrameReady, () => {});
-    nextSequence.setPlayhead(nextFrame);
-    nextSequence.pin(probe);
+  // The film moves on lighter frames. When it stops, this one exact frame comes in at 4K and fades in over
+  // the same picture, so a visitor sees full detail wherever they pause without downloading it all.
+  function requestStill(frame: number) {
+    const target = frame > filmLastFrame ? Math.round((frame - turnFrames.first) / turnFrames.step) * turnFrames.step + turnFrames.first : Math.round(frame);
+    const controller = new AbortController();
+    stillController = controller;
+    fetch(frameUrl(target, "uhd"), { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error(String(response.status));
+        return response.blob();
+      })
+      .then((blob) => createImageBitmap(blob))
+      .then((bitmap) => {
+        if (controller.signal.aborted) {
+          bitmap.close();
+          return;
+        }
+        still = { bitmap, alpha: 0 };
+        needsDraw = true;
+      })
+      // A missing 4K frame only costs sharpness: the lighter frame is already on screen.
+      .catch(() => {});
   }
 
-  function finishUhdMove() {
-    if (!nextSequence || nextSequence.framesFetched < uhdProbeFrames) return;
-    if (nextSequence.framesPerSecond() < uhdMinimumFramesPerSecond) {
-      nextSequence.dispose();
-      nextSequence = undefined;
-      return;
+  function clearStill() {
+    stillController?.abort();
+    stillController = undefined;
+    if (still) {
+      still.bitmap.close();
+      still = undefined;
+      needsDraw = true;
     }
-    if (!nextSequence.isDecoded(nextFrame)) return;
-    sequence.dispose();
-    sequence = nextSequence;
-    nextSequence = undefined;
-    sequence.unpin();
-    variant = "uhd";
-    lastSnapped = -1;
-    spreadLoaded = false;
-    measure();
-    onScroll();
   }
 
   function measure() {
     stageWidth = stage.clientWidth;
     stageHeight = stage.clientHeight;
+    suitsStills = variant === "desktop" && screenSuitsUhd();
     // Never larger than the frames themselves: extra canvas pixels cost time and add no detail.
-    const source = variants[variant];
+    const source = suitsStills ? stillSize : variants[variant];
     const sharpest = Math.min(source.width / stageWidth, source.height / stageHeight);
-    const ratio = Math.min(window.devicePixelRatio || 1, sharpestRatio[variant], Math.max(1, sharpest));
+    const ratio = Math.min(window.devicePixelRatio || 1, suitsStills ? sharpestRatio.still : sharpestRatio.moving, Math.max(1, sharpest));
     canvas.width = Math.round(stageWidth * ratio);
     canvas.height = Math.round(stageHeight * ratio);
 
@@ -138,7 +142,7 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
   }
 
   function placeScreen() {
-    const [x, y, width, height] = anchorsFor(variant).screen;
+    const [x, y, width, height] = (anchors as Record<Variant, Anchors>)[variant].screen;
     const topLeft = toStage(x, y);
     const bottomRight = toStage(x + width, y + height);
     root.style.setProperty("--screen-x", `${topLeft.x}px`);
@@ -188,7 +192,7 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
 
   function updateCallouts(frame: number) {
     if (!callouts.length) return;
-    const data = anchorsFor(variant);
+    const data = (anchors as Record<Variant, Anchors>)[variant];
     const lastIndex = data.stages[signalStages[0].id].length - 1;
     const index = Math.min(lastIndex, Math.max(0, Math.round(frame) - data.firstFrame));
     for (const callout of callouts) {
@@ -209,21 +213,30 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
   let lastDaylit = -1;
   let lastSnapped = -1;
   function tick() {
-    if (revealDone) {
-      considerUhd();
-      finishUhdMove();
-    }
     const frame = currentFrame();
+    const now = performance.now();
+    if (Math.abs(frame - lastFrame) > 0.02) {
+      lastFrame = frame;
+      movedAt = now;
+      clearStill();
+    } else if (revealDone && suitsStills && !stillController && now - movedAt >= stillAfterMs) {
+      requestStill(frame);
+    }
+    if (still && still.alpha < 1) {
+      still.alpha = Math.min(1, still.alpha + (now - lastTickAt) / stillFadeMs);
+      needsDraw = true;
+    }
+    lastTickAt = now;
     const snapped = sequence.snap(frame);
     if (snapped !== lastSnapped) {
       lastSnapped = snapped;
-      // The opening plays once from its pinned frames and scrolling starts after it, so the rest are never needed.
-      if (revealDone) sequence.setPlayhead(snapped);
-      if (revealDone && snapped > revealEndFrame && snapped <= filmLastFrame) sequence.loadScene(sceneFor(snapped).id, true);
+      // Nothing past the opening's pinned frames downloads until the visitor shows they want to go further.
+      if (spreadLoaded) sequence.setPlayhead(snapped);
     }
     if (!needsDraw && Math.abs(frame - lastDrawn) < 0.01) return;
     needsDraw = false;
     if (drawFrame(frame)) {
+      if (still) drawCover(still.bitmap, still.alpha);
       lastDrawn = frame;
       if (poster.dataset.visible === "true" && frame >= revealEndFrame) poster.dataset.visible = "false";
     }
@@ -244,15 +257,12 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
     if (!revealDone) return;
     moveTo(frameForScroll(scrollY));
 
-    // Nothing past the opening downloads until the visitor shows they want to go further.
     if (scrollY <= 0) return;
     if (!spreadLoaded) {
       spreadLoaded = true;
+      lastSnapped = -1;
       sequence.loadKeyFrames(sceneIds.filter((id) => id !== "turn"));
     }
-    // Start the next chapter's frames when it is one viewport away.
-    const upcoming = sceneFor(Math.min(filmLastFrame, frameForScroll(scrollY + stageHeight)));
-    sequence.loadScene(upcoming.id);
   }
 
   function onPointerMove(event: PointerEvent) {
@@ -263,15 +273,12 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
 
   function onResize() {
     const next = pickVariant();
-    // 4K is only ever reached by measuring, so a wide window staying wide keeps it.
-    if (next !== variant && !(variant === "uhd" && next === "desktop")) {
+    if (next !== variant) {
       variant = next;
-      nextSequence?.dispose();
-      nextSequence = undefined;
-      uhdDecided = false;
+      clearStill();
       sequence.dispose();
       sequence = new FrameSequence(variant, onFrameReady, onFrameFailed);
-      sequence.loadScene(sceneFor(Math.round(playhead.frame)).id, true);
+      sequence.pin(revealDone ? [sequence.snap(playhead.frame)] : openingFrames);
       lastSnapped = -1;
       spreadLoaded = false;
     }
@@ -379,8 +386,8 @@ export function startFilm(root: HTMLElement, onFailure: () => void) {
     // Removes every inline style too, so the poster version of the page starts clean.
     animations.revert();
     delete document.documentElement.dataset.navSolid;
+    clearStill();
     sequence.dispose();
-    nextSequence?.dispose();
     canvas.remove();
   };
 }
