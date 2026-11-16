@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="78 -104 1040 1040" role="img" aria-label="CATSMART">
+  <title>CATSMART</title>
+  <defs>
+    <linearGradient id="fold" gradientUnits="userSpaceOnUse" x1="205" y1="445" x2="345" y2="625">
+      <stop offset="0" stop-color="#a39377"/>
+      <stop offset="0.35" stop-color="#cfc4ae"/>
+      <stop offset="0.7" stop-color="#eae3d3"/>
+      <stop offset="1" stop-color="#f7f4ea"/>
+    </linearGradient>
+    <linearGradient id="gold" gradientUnits="userSpaceOnUse" x1="661" y1="287" x2="1020" y2="111">
+      <stop offset="0" stop-color="#e9c86f"/>
+      <stop offset="0.55" stop-color="#f0d184"/>
+      <stop offset="1" stop-color="#d2ac5c"/>
+    </linearGradient>
+  </defs>
+  <rect x="78" y="-104" width="1040" height="1040" rx="190" fill="#050505"/>
+  <path fill="url(#fold)" d="M235 405C290 490 385 535 490 535H775C825 535 868 568 905 620L976 722H490C350 722 235 640 196 525C195 480 210 435 235 405Z"/>
+  <path fill="#f7f4ea" d="M490 111H822L620 287H490C380 287 290 330 235 405C210 435 195 480 196 525C183 495 176 460 176 425C176 250 310 111 490 111Z"/>
+  <path fill="url(#gold)" d="M857 111H1020L854 287H661Z"/>
+</svg>
