@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+Thumbs.db
+*.tmp
+*.temp
+.vite/
+
+# Rendered film frames: regenerate with tools/film/. Committed once the real device replaces the stand-in.
+public/film/

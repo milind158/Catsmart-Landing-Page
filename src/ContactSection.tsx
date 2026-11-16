@@ -1,0 +1,107 @@
+import { ChangeEvent, FormEvent, useState } from "react";
+
+const contactEmail = "info@cats-global.com";
+
+type ContactField = "name" | "email" | "reason" | "message";
+type ContactErrors = Partial<Record<ContactField, string>>;
+
+function validateContactField(field: ContactField, value: string) {
+  if (field === "name" && !value.trim()) return "Please enter your name.";
+  if (field === "email") {
+    if (!value.trim()) return "Please enter your email address.";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) return "Please enter a valid email address.";
+  }
+  if (field === "reason" && !value) return "Please select a reason.";
+  if (field === "message" && !value.trim()) return "Please enter your message.";
+  return "";
+}
+
+export default function ContactSection() {
+  const [submissionAttempted, setSubmissionAttempted] = useState(false);
+  const [validationAttempted, setValidationAttempted] = useState(false);
+  const [errors, setErrors] = useState<ContactErrors>({});
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const values = new FormData(event.currentTarget);
+    const nextErrors: ContactErrors = {
+      name: validateContactField("name", String(values.get("name") ?? "")),
+      email: validateContactField("email", String(values.get("email") ?? "")),
+      reason: validateContactField("reason", String(values.get("reason") ?? "")),
+      message: validateContactField("message", String(values.get("message") ?? "")),
+    };
+    setValidationAttempted(true);
+    setErrors(nextErrors);
+    if (Object.values(nextErrors).some(Boolean)) {
+      setSubmissionAttempted(false);
+      return;
+    }
+    setSubmissionAttempted(true);
+    // The site has no server of its own, so the visitor's email app does the sending.
+    const subject = `${values.get("reason")}: website enquiry from ${String(values.get("name")).trim()}`;
+    const body = `Name: ${String(values.get("name")).trim()}\nEmail: ${String(values.get("email")).trim()}\nReason: ${values.get("reason")}\n\n${String(values.get("message")).trim()}`;
+    window.location.href = `mailto:${contactEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  }
+
+  function handleFieldChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
+    if (!validationAttempted) return;
+    const field = event.target.name as ContactField;
+    setErrors((current) => ({ ...current, [field]: validateContactField(field, event.target.value) }));
+    setSubmissionAttempted(false);
+  }
+
+  const fieldClass = "motion-hover mt-2 min-h-12 w-full border-0 border-b border-ink/40 bg-transparent px-0 py-3 text-base text-ink outline-none hover:border-ink focus:border-ink focus:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold-ink";
+  const errorMessage = (field: ContactField) => errors[field] && <p id={`contact-${field}-error`} role="alert" className="mt-1.5 text-xs leading-5 text-[var(--error)]">{errors[field]}</p>;
+  const invalidStyle = (field: ContactField) => errors[field] ? { borderColor: "var(--error)" } : undefined;
+
+  return (
+    <section id="contact" className="contact-section section-band relative bg-paper text-ink">
+      <div className="site-container grid gap-12 md:grid-cols-[1fr_1fr] md:gap-20">
+        <div>
+          <p className="eyebrow text-gold-ink">Contact CATS</p>
+          <h2 className="section-heading mt-4">Get in touch.</h2>
+          <p className="mt-6 max-w-md text-lg leading-8 text-ink-soft">Send us a question, a requirement or a demo request.</p>
+        </div>
+
+        <form className="grid gap-5" action={`mailto:${contactEmail}`} method="post" encType="text/plain" onSubmit={handleSubmit} noValidate>
+          <div>
+            <label htmlFor="contact-name" className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">Name</label>
+            <input id="contact-name" name="name" type="text" autoComplete="name" required aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? "contact-name-error" : undefined} onChange={handleFieldChange} style={invalidStyle("name")} className={fieldClass} />
+            {errorMessage("name")}
+          </div>
+          <div>
+            <label htmlFor="contact-email" className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">Email ID</label>
+            <input id="contact-email" name="email" type="email" autoComplete="email" required aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? "contact-email-error" : undefined} onChange={handleFieldChange} style={invalidStyle("email")} className={fieldClass} />
+            {errorMessage("email")}
+          </div>
+          <div>
+            <label htmlFor="contact-reason" className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">Reason for Message</label>
+            <div className="relative">
+              <select id="contact-reason" name="reason" required defaultValue="" aria-invalid={Boolean(errors.reason)} aria-describedby={errors.reason ? "contact-reason-error" : undefined} onChange={handleFieldChange} style={invalidStyle("reason")} className={`${fieldClass} appearance-none pr-12 [color-scheme:light]`}>
+                <option value="" disabled>Select a reason</option>
+                <option>General Inquiry</option>
+                <option>Product Information</option>
+                <option>Request a Demo</option>
+                <option>Technical Support</option>
+                <option>Other</option>
+              </select>
+              <span aria-hidden="true" className="pointer-events-none absolute right-4 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 border-b border-r border-ink" />
+            </div>
+            {errorMessage("reason")}
+          </div>
+          <div>
+            <label htmlFor="contact-message" className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">Message</label>
+            <textarea id="contact-message" name="message" required rows={4} aria-invalid={Boolean(errors.message)} aria-describedby={errors.message ? "contact-message-error" : undefined} onChange={handleFieldChange} style={invalidStyle("message")} className={`${fieldClass} resize-y`} />
+            {errorMessage("message")}
+          </div>
+          <div className="flex flex-wrap items-center gap-5">
+            <button type="submit" className="motion-hover inline-flex min-h-12 items-center gap-3 border border-ink bg-ink px-7 text-sm font-medium text-paper hover:bg-transparent hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold-ink">
+              Send Message <span aria-hidden="true">→</span>
+            </button>
+            {submissionAttempted && <p role="status" className="max-w-md text-xs leading-5 text-ink-soft">Your email app should now open with this message. Press send there to deliver it. If nothing opens, write to us at <a href={`mailto:${contactEmail}`} className="underline underline-offset-2">{contactEmail}</a>. Your entries remain in the form.</p>}
+          </div>
+        </form>
+      </div>
+    </section>
+  );
+}
