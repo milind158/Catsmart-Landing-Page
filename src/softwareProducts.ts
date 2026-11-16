@@ -5,10 +5,20 @@ export type SoftwareProduct = {
   description: string;
   image: {
     src: string;
-    fit?: "cover" | "contain";
-    position?: string;
+    width: number;
+    height: number;
+    /** How it sits in its frame: "contain" for pictures whose edges must not be cropped. Defaults to filling it. */
+    fit?: "contain";
+    /**
+     * Where each highlight can be seen in this image, as [x%, y%], in the same order as `highlights`.
+     * The homepage tour puts a numbered pin there and zooms towards it. Use null where the image does not
+     * visibly show that highlight. These belong to the image: replace them whenever the image changes.
+     * Only for images that fill their frame (not "contain"), and keep y within the top 65% so the pin is not cropped.
+     */
+    spots?: ([number, number] | null)[];
   };
-  slug: string;
+  /** Three or four short points shown with the product on the homepage. */
+  highlights: string[];
   route: string;
   displayOrder: number;
   enabled: boolean;
@@ -35,8 +45,7 @@ export type SoftwareDetail = {
   introduction: string;
 };
 
-export const softwareContactRoute: string | null = null;
-export const softwareLoginRoute: string | null = null;
+export const softwareLoginRoute: string | null = "https://catsmart.io/";
 
 export const softwareProducts: SoftwareProduct[] = [
   {
@@ -44,8 +53,8 @@ export const softwareProducts: SoftwareProduct[] = [
     name: "Sangrah",
     tagline: "Every signal has a story. Sangrah makes it measurable.",
     description: "A centralized platform for sensor management, calibration, trials, signal analysis, and reporting.",
-    image: { src: "/images/software/sangrah.png", fit: "contain", position: "center" },
-    slug: "sangrah",
+    image: { src: "/images/software/sangrah.webp", width: 1400, height: 934, spots: [[29, 45.5], [44, 35], [68, 45], [30, 31]] },
+    highlights: ["Sensor, device and component catalogue", "Reusable trial and calibration templates", "Live data capture and signal analysis", "Reports as CSV or presentation slides"],
     route: "/software/sangrah",
     displayOrder: 6,
     enabled: true,
@@ -55,8 +64,8 @@ export const softwareProducts: SoftwareProduct[] = [
     name: "VIDUR Raksha",
     tagline: "Know your assets before they tell you something's wrong.",
     description: "An enterprise asset health intelligence platform for structural monitoring, condition assessment, risk analysis, and predictive maintenance.",
-    image: { src: "/images/software/vidur-raksha.png", fit: "contain", position: "center" },
-    slug: "vidur-raksha",
+    image: { src: "/images/software/vidur-raksha-v2.webp", width: 1400, height: 934, spots: [null, [40, 60], [67, 29], null] },
+    highlights: ["Non-contact laser-based measurement trials", "Asset and component registry on a map", "Trial planning and team assignment", "Condition history across repeated inspections"],
     route: "/software/vidur-raksha",
     displayOrder: 3,
     enabled: true,
@@ -66,8 +75,8 @@ export const softwareProducts: SoftwareProduct[] = [
     name: "Sarathi",
     tagline: "Complex operations. One clearer picture.",
     description: "A platform for operational monitoring, visibility, and coordinated management.",
-    image: { src: "/images/software/sarathi.png", fit: "contain", position: "center" },
-    slug: "sarathi",
+    image: { src: "/images/software/sarathi.webp", width: 1400, height: 788, spots: [[46, 43], [19, 41.5], [49, 63], [69, 33]] },
+    highlights: ["Operational monitoring across locations", "Step-by-step guides and workflows", "Task assignment and tracking", "Alerts and coordinated response"],
     route: "/software/sarathi",
     displayOrder: 1,
     enabled: true,
@@ -77,8 +86,8 @@ export const softwareProducts: SoftwareProduct[] = [
     name: "Samveda",
     tagline: "Intelligence begins where the data is born.",
     description: "Edge-based monitoring and connected intelligence for industrial applications.",
-    image: { src: "/images/software/samveda.png", fit: "contain", position: "center" },
-    slug: "samveda",
+    image: { src: "/images/software/samveda.webp", width: 1400, height: 788, spots: [[79, 53], [62, 45], null, null] },
+    highlights: ["Connects medical devices, PLCs, digital I/O and analog sensors", "Edge processing with AI-driven analytics", "Predictive notifications", "Single-site or multi-site deployment"],
     route: "/software/samveda",
     displayOrder: 5,
     enabled: true,
@@ -88,8 +97,8 @@ export const softwareProducts: SoftwareProduct[] = [
     name: "Bodhi.ai",
     tagline: "Less searching. Less switching. Just ask.",
     description: "An AI-powered workplace operating system that connects tools, automates workflows, and provides information through natural-language conversations.",
-    image: { src: "/images/software/bodhi-ai.png", fit: "contain", position: "center" },
-    slug: "bodhi-ai",
+    image: { src: "/images/software/bodhi-ai-workspace.webp", width: 1400, height: 788, fit: "contain" },
+    highlights: ["Answers from connected documents and tools", "HR, task and meeting workflows through chat", "Role-based access to information", "Web, Android and iOS apps"],
     route: "/software/bodhi-ai",
     displayOrder: 2,
     enabled: true,
@@ -99,8 +108,8 @@ export const softwareProducts: SoftwareProduct[] = [
     name: "Trinetra",
     tagline: "The AI that never blinks.",
     description: "Trinetra transforms existing CCTV cameras into intelligent industrial safety monitoring systems. With on-site edge AI, it detects safety violations, monitors restricted zones, and delivers real-time alerts without depending on continuous internet connectivity.",
-    image: { src: "/images/software/Trinetra.png", fit: "contain", position: "center" },
-    slug: "trinetra",
+    image: { src: "/images/software/trinetra.webp", width: 1400, height: 934, spots: [[11, 26], [69, 48], null, [31, 25]] },
+    highlights: ["Works with existing ONVIF and IP cameras", "PPE and restricted-zone detection on site", "Remote viewing without opening network ports", "One dashboard on web, desktop and mobile"],
     route: "/software/trinetra",
     displayOrder: 4,
     enabled: true,
@@ -129,6 +138,9 @@ export const softwareDetails: Record<string, SoftwareDetail> = {
       { title: "Gas analysis trials", description: "Support gas analysis within trial workflows." },
       { title: "Signal analysis", description: "Process and visualize captured signals." },
       { title: "Reports and access", description: "Generate reports with role-based access." },
+      { title: "Reusable templates", description: "Set up trial, calibration, and gas-analysis templates once and reuse them across devices." },
+      { title: "Live data capture", description: "Record raw data while a trial runs and review it as graphs." },
+      { title: "CSV and presentation reports", description: "Download trial results as CSV files or ready-made presentation slides." },
     ],
     workflow: ["Register devices", "Configure trials", "Connect sensors", "Execute and calibrate", "Analyse data", "Generate reports"],
     benefits: ["Keep sensor information in one place", "Bring trial and calibration steps into a structured workflow", "Make signal analysis and reporting part of the same process"],
@@ -159,6 +171,7 @@ export const softwareDetails: Record<string, SoftwareDetail> = {
       { title: "Historical Condition Tracking", description: "Compare results from repeated trials to understand changes in an asset's behaviour over time. Identify trends, unusual deviations, and signs that may require closer inspection." },
       { title: "Risk Assessment & Prioritisation", description: "Use measurement history and asset information to help identify components that require attention, supporting more informed inspection and maintenance planning." },
       { title: "Reporting & Documentation", description: "Generate structured reports linked to assets, components, and measurement trials. Maintain inspection histories and reviewed reports for engineering, maintenance, and compliance teams." },
+      { title: "Works With Vidur Photonic Sensing", description: "Use CATS's Vidur system for non-contact, real-time measurement of vibration, displacement, velocity, and acceleration." },
     ],
     workflowHeading: "From a single measurement to a clearer picture of asset health.",
     applicationsHeading: "Asset health across critical infrastructure.",
@@ -206,6 +219,12 @@ export const softwareDetails: Record<string, SoftwareDetail> = {
       { title: "Real-Time Alerts", description: "Notify control rooms and designated personnel through configured alert channels." },
       { title: "Existing CCTV Integration", description: "Use existing CCTV cameras to provide video feeds for monitoring, without requiring an entirely new camera network." },
       { title: "On-Site AI Processing", description: "Process video locally through an edge-based architecture, supporting on-site detection even when internet connectivity is unavailable." },
+      { title: "Secure Remote Access", description: "View cameras and receive alerts from anywhere, without opening inbound network ports at the site." },
+      { title: "Encrypted Live Viewing", description: "Live video is encrypted end to end between the site and authorised viewers." },
+      { title: "Camera Discovery & Onboarding", description: "Find ONVIF and IP cameras on the local network and add them from the dashboard." },
+      { title: "Recording & Storage", description: "Record clips, review recordings, and keep an eye on available storage." },
+      { title: "One Dashboard, Every Device", description: "Use the same dashboard on web, desktop, and mobile, on the local network or remotely." },
+      { title: "Access Control", description: "Manage users, sites, and camera access across locations from one place." },
     ],
     workflow: [
       "Existing CCTV cameras connect to the on-site Trinetra edge unit",
@@ -289,6 +308,9 @@ export const softwareDetails: Record<string, SoftwareDetail> = {
       { title: "Multi-Parameter Monitoring", description: "Bring together readings from different types of sensors and measured parameters, helping teams understand multiple operating conditions." },
       { title: "Connected Monitoring", description: "Make collected sensor information available through a connected monitoring system, giving teams a more organised view of their operations." },
       { title: "Operational Data Visibility", description: "View relevant sensor information together to identify changes, unusual readings, and conditions that may require further investigation." },
+      { title: "Plug-and-Play Connectivity", description: "Connect medical devices, PLCs, digital I/O, and analog sensors, and standardise their data into a common format." },
+      { title: "Edge Analytics & Predictive Notifications", description: "Process data at the edge with AI-driven analytics, and receive predictive notifications for safety, infection control, and equipment maintenance." },
+      { title: "Single-Site or Multi-Site", description: "Deploy at a single facility or across a network of hospitals, clinics, and remote-care settings." },
     ],
     workflowHeading: "From scattered sensor readings to one connected view.",
     applicationsHeading: "Connected sensor monitoring across facilities.",
@@ -300,6 +322,7 @@ export const softwareDetails: Record<string, SoftwareDetail> = {
       { title: "Identify & Act", description: "Use the available readings to recognise conditions that need attention and decide on appropriate action." },
     ],
     applications: [
+      { title: "Healthcare Monitoring", description: "Centralised patient monitoring dashboards, real-time bed monitoring, predictive maintenance for ICU equipment, infection-control monitoring, medication management, and environmental compliance." },
       { title: "Industrial Plants & Manufacturing Facilities", description: "Bring together readings from sensors monitoring equipment, environmental conditions, and operational parameters across a facility." },
       { title: "Hospitals & Healthcare Facilities", description: "Consolidate information from compatible facility-monitoring sensors, such as those used for environmental conditions, equipment areas, and building systems." },
       { title: "Commercial Buildings & Smart Facilities", description: "Connect sensors used across building infrastructure, utilities, environmental monitoring, and facility operations." },
@@ -336,6 +359,8 @@ export const softwareDetails: Record<string, SoftwareDetail> = {
       { title: "Meetings & Scheduling", description: "Schedule meetings, coordinate invitations, retrieve meeting information, and access summaries and action items through connected tools." },
       { title: "Finance & Business Information", description: "Access permitted payroll information, reimbursement details, financial reports, and business insights without manually searching through different systems." },
       { title: "Connected Tools & Workflow Automation", description: "Bring workplace applications together and initiate supported actions directly through chat, reducing repetitive steps and unnecessary switching between tools." },
+      { title: "Web & Mobile Apps", description: "Use Bodhi.ai in the browser or through native Android and iOS apps." },
+      { title: "Admin Console & Usage Insights", description: "Manage users and configuration, and review usage across the organisation." },
     ],
     workflowHeading: "From a simple question to the information or action you need.",
     applicationsHeading: "One conversational interface across everyday work.",

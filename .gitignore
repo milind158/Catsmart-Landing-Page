@@ -1,4 +1,4 @@
-﻿node_modules/
+node_modules/
 dist/
 .env
 .env.*
@@ -9,3 +9,6 @@ Thumbs.db
 *.tmp
 *.temp
 .vite/
+
+# Rendered film frames: regenerate with tools/film/. Committed once the real device replaces the stand-in.
+public/film/

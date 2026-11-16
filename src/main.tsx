@@ -1,17 +1,29 @@
 import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import HomePage from "./HomePage";
-import SoftwarePage from "./SoftwarePage";
-import { softwareProducts } from "./softwareProducts";
-import TechnologyPage from "./TechnologyPage";
-import { technologyByPath } from "./technologyDetails";
+import { createRoot, hydrateRoot } from "react-dom/client";
+import "@fontsource-variable/inter/wght.css";
+import "@fontsource-variable/source-serif-4/opsz.css";
+import App from "./App";
+import { notFoundDescription, notFoundPage, notFoundTitle, pageForPath, pageRoutes } from "./routes";
 import "./index.css";
 
-const currentProduct = softwareProducts.find((product) => product.enabled && product.route === window.location.pathname);
-const currentTechnology = technologyByPath(window.location.pathname);
+function setPageMeta(title: string, description: string) {
+  document.title = title;
+  document.querySelector('meta[name="description"]')?.setAttribute("content", description);
+}
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    {currentProduct ? <SoftwarePage product={currentProduct} /> : currentTechnology ? <TechnologyPage technology={currentTechnology} /> : <HomePage />}
-  </StrictMode>,
-);
+const page = pageForPath(window.location.pathname);
+const route = pageRoutes.find((item) => item.path === page);
+if (route) setPageMeta(route.title, route.description);
+if (page === notFoundPage) setPageMeta(notFoundTitle, notFoundDescription);
+
+const root = document.getElementById("root")!;
+const app = <StrictMode><App page={page} /></StrictMode>;
+
+// A host can answer with another page's file, for example index.html for every URL.
+// Hydrate only HTML that was built for this page; otherwise render it from scratch.
+if (root.dataset.page === page) {
+  hydrateRoot(root, app);
+} else {
+  root.replaceChildren();
+  createRoot(root).render(app);
+}

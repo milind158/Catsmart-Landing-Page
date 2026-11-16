@@ -1,5 +1,6 @@
 import { ChangeEvent, FormEvent, useState } from "react";
-import { primaryActionClass } from "./actionStyles";
+
+const contactEmail = "info@cats-global.com";
 
 type ContactField = "name" | "email" | "reason" | "message";
 type ContactErrors = Partial<Record<ContactField, string>>;
@@ -36,6 +37,10 @@ export default function ContactSection() {
       return;
     }
     setSubmissionAttempted(true);
+    // The site has no server of its own, so the visitor's email app does the sending.
+    const subject = `${values.get("reason")}: website enquiry from ${String(values.get("name")).trim()}`;
+    const body = `Name: ${String(values.get("name")).trim()}\nEmail: ${String(values.get("email")).trim()}\nReason: ${values.get("reason")}\n\n${String(values.get("message")).trim()}`;
+    window.location.href = `mailto:${contactEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   }
 
   function handleFieldChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
@@ -45,35 +50,34 @@ export default function ContactSection() {
     setSubmissionAttempted(false);
   }
 
-  const fieldClass = "mt-2 min-h-12 w-full rounded-[7px] border border-white/20 bg-transparent px-4 py-3 text-sm text-white outline-none transition-colors hover:border-white/40 focus:border-white/55 focus:ring-1 focus:ring-white/20 placeholder:text-white/30";
-  const errorMessage = (field: ContactField) => errors[field] && <p id={`contact-${field}-error`} role="alert" className="mt-1.5 text-xs leading-5 text-red-400">{errors[field]}</p>;
-  const invalidStyle = (field: ContactField) => errors[field] ? { borderColor: "#f87171" } : undefined;
+  const fieldClass = "motion-hover mt-2 min-h-12 w-full border-0 border-b border-ink/40 bg-transparent px-0 py-3 text-base text-ink outline-none hover:border-ink focus:border-ink focus:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold-ink";
+  const errorMessage = (field: ContactField) => errors[field] && <p id={`contact-${field}-error`} role="alert" className="mt-1.5 text-xs leading-5 text-[var(--error)]">{errors[field]}</p>;
+  const invalidStyle = (field: ContactField) => errors[field] ? { borderColor: "var(--error)" } : undefined;
 
   return (
-    <section id="contact" className="relative scroll-mt-8 border-t border-white/10 bg-[var(--site-background)] px-6 py-20 text-white md:px-10 md:py-28">
-      <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-0 h-14 w-px -translate-x-1/2 bg-gradient-to-b from-[var(--accent-red)]/40 to-transparent" />
-      <div className="mx-auto grid max-w-6xl gap-12 md:grid-cols-[0.8fr_1.2fr] md:gap-20">
+    <section id="contact" className="contact-section section-band relative bg-paper text-ink">
+      <div className="site-container grid gap-12 md:grid-cols-[1fr_1fr] md:gap-20">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-[var(--accent-red)]">Contact CATS</p>
-          <h2 className="mt-5 text-4xl font-black tracking-tight md:text-6xl">Let&apos;s Connect.</h2>
-          <p className="mt-5 max-w-md text-base leading-7 text-[var(--body-copy)]">Have a question or something in mind? We&apos;d love to hear from you.</p>
+          <p className="eyebrow text-gold-ink">Contact CATS</p>
+          <h2 className="section-heading mt-4">Get in touch.</h2>
+          <p className="mt-6 max-w-md text-lg leading-8 text-ink-soft">Send us a question, a requirement or a demo request.</p>
         </div>
 
-        <form className="grid gap-5" onSubmit={handleSubmit} noValidate>
+        <form className="grid gap-5" action={`mailto:${contactEmail}`} method="post" encType="text/plain" onSubmit={handleSubmit} noValidate>
           <div>
-            <label htmlFor="contact-name" className="text-xs font-semibold text-white/80">Name</label>
+            <label htmlFor="contact-name" className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">Name</label>
             <input id="contact-name" name="name" type="text" autoComplete="name" required aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? "contact-name-error" : undefined} onChange={handleFieldChange} style={invalidStyle("name")} className={fieldClass} />
             {errorMessage("name")}
           </div>
           <div>
-            <label htmlFor="contact-email" className="text-xs font-semibold text-white/80">Email ID</label>
+            <label htmlFor="contact-email" className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">Email ID</label>
             <input id="contact-email" name="email" type="email" autoComplete="email" required aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? "contact-email-error" : undefined} onChange={handleFieldChange} style={invalidStyle("email")} className={fieldClass} />
             {errorMessage("email")}
           </div>
           <div>
-            <label htmlFor="contact-reason" className="text-xs font-semibold text-white/80">Reason for Message</label>
+            <label htmlFor="contact-reason" className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">Reason for Message</label>
             <div className="relative">
-              <select id="contact-reason" name="reason" required defaultValue="" aria-invalid={Boolean(errors.reason)} aria-describedby={errors.reason ? "contact-reason-error" : undefined} onChange={handleFieldChange} style={invalidStyle("reason")} className={`${fieldClass} appearance-none pr-12 [color-scheme:dark]`}>
+              <select id="contact-reason" name="reason" required defaultValue="" aria-invalid={Boolean(errors.reason)} aria-describedby={errors.reason ? "contact-reason-error" : undefined} onChange={handleFieldChange} style={invalidStyle("reason")} className={`${fieldClass} appearance-none pr-12 [color-scheme:light]`}>
                 <option value="" disabled>Select a reason</option>
                 <option>General Inquiry</option>
                 <option>Product Information</option>
@@ -81,20 +85,20 @@ export default function ContactSection() {
                 <option>Technical Support</option>
                 <option>Other</option>
               </select>
-              <span aria-hidden="true" className="pointer-events-none absolute right-4 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 border-b border-r border-white/60" />
+              <span aria-hidden="true" className="pointer-events-none absolute right-4 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 border-b border-r border-ink" />
             </div>
             {errorMessage("reason")}
           </div>
           <div>
-            <label htmlFor="contact-message" className="text-xs font-semibold text-white/80">Message</label>
+            <label htmlFor="contact-message" className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">Message</label>
             <textarea id="contact-message" name="message" required rows={4} aria-invalid={Boolean(errors.message)} aria-describedby={errors.message ? "contact-message-error" : undefined} onChange={handleFieldChange} style={invalidStyle("message")} className={`${fieldClass} resize-y`} />
             {errorMessage("message")}
           </div>
           <div className="flex flex-wrap items-center gap-5">
-            <button type="submit" className={`${primaryActionClass} px-6`}>
+            <button type="submit" className="motion-hover inline-flex min-h-12 items-center gap-3 border border-ink bg-ink px-7 text-sm font-medium text-paper hover:bg-transparent hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold-ink">
               Send Message <span aria-hidden="true">→</span>
             </button>
-            {submissionAttempted && <p role="status" className="max-w-md text-xs leading-5 text-white/55">Your message has not been sent because form submission is not configured yet. Your entries remain in the form.</p>}
+            {submissionAttempted && <p role="status" className="max-w-md text-xs leading-5 text-ink-soft">Your email app should now open with this message. Press send there to deliver it. If nothing opens, write to us at <a href={`mailto:${contactEmail}`} className="underline underline-offset-2">{contactEmail}</a>. Your entries remain in the form.</p>}
           </div>
         </form>
       </div>
